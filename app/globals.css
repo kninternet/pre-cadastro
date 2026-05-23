@@ -1,0 +1,159 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --kn-blue: #0c1e3d;
+  --kn-blue-mid: #16305e;
+  --kn-blue-light: #1a3a70;
+  --kn-orange: #f97316;
+  --kn-orange-dk: #ea6c0a;
+  
+  --background: #f8f9fb;
+  --foreground: #0c1e3d;
+  --card: #ffffff;
+  --card-foreground: #0c1e3d;
+  --popover: #ffffff;
+  --popover-foreground: #0c1e3d;
+  --primary: #f97316;
+  --primary-foreground: #ffffff;
+  --secondary: #0c1e3d;
+  --secondary-foreground: #ffffff;
+  --muted: #f0f2f5;
+  --muted-foreground: #6b7280;
+  --accent: #f97316;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --success: #16a34a;
+  --border: #e4e7ec;
+  --input: #f0f2f5;
+  --ring: #f97316;
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: #0c1e3d;
+  --foreground: #f8f9fb;
+  --card: #16305e;
+  --card-foreground: #f8f9fb;
+  --popover: #16305e;
+  --popover-foreground: #f8f9fb;
+  --primary: #f97316;
+  --primary-foreground: #ffffff;
+  --secondary: #1a3a70;
+  --secondary-foreground: #ffffff;
+  --muted: #1a3a70;
+  --muted-foreground: #9aa3b0;
+  --accent: #f97316;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #1a3a70;
+  --input: #1a3a70;
+  --ring: #f97316;
+}
+
+@theme inline {
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-heading: var(--font-sora), sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .font-heading {
+    font-family: var(--font-heading);
+  }
+}
+
+/* Background decoration */
+.page-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.page-bg::before {
+  content: '';
+  position: absolute;
+  top: -200px;
+  right: -200px;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(249, 115, 22, 0.07) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.page-bg::after {
+  content: '';
+  position: absolute;
+  bottom: -150px;
+  left: -150px;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(12, 30, 61, 0.05) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.dot-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.025;
+  background-image: radial-gradient(circle at 1px 1px, var(--kn-blue) 1px, transparent 0);
+  background-size: 44px 44px;
+}
+
+/* Fiber decoration SVG */
+.fiber-deco {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.04;
+}
+
+/* Spinner animation */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin 0.7s linear infinite;
+}
