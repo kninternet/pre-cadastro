@@ -124,12 +124,19 @@ export async function POST(request: Request) {
     )
   }
 
-  // 3. Notificar Fluenzo
+  // 3. Notificar Fluenzo — callback com resultado do SGP
   try {
+    const fluenzoCallback = {
+      status: sgpOk,
+      message: sgpOk
+        ? 'Realizado com sucesso'
+        : ((sgpResponse as Record<string, string>)?.error ?? 'Erro no cadastro'),
+      ...body,
+    }
     const fluenzoRes = await fetch(process.env.FLUENZO_URL ?? '', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify(fluenzoCallback),
     })
     const fluenzoResponse = await fluenzoRes.json()
     await pool.query(
