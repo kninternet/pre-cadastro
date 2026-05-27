@@ -14,14 +14,6 @@ const mailer = nodemailer.createTransport({
   },
 })
 
-function parsePlano(plano: string) {
-  const parts = plano.split(' - ')
-  return {
-    velocidade: parts[0]?.trim() ?? plano,
-    preco: parts[1]?.trim() ?? '',
-  }
-}
-
 function parseLogradouro(logradouro: string) {
   const match = logradouro.match(/^(.+?),\s*(\S+)(?:\s*-\s*(.+))?$/)
   if (match) {
@@ -44,54 +36,71 @@ export async function POST(request: Request) {
   }
 
   const {
+    lead_id,
     nome, cpfcnpj, email, celular,
     logradouro: logradouroRaw,
     bairro, cidade, uf, cep,
     pontoreferencia, observacao,
+    token,
   } = body
 
   const { logradouro, numero, complemento } = parseLogradouro(logradouroRaw ?? '')
-  const { velocidade, preco } = parsePlano(observacao?.match(/Plano:\s*(.+?)\s*\|/)?.[1] ?? '')
   const vencimento = observacao?.match(/Vencimento:\s*Dia\s*(\S+)/)?.[1] ?? ''
   const cidade_cobertura = observacao?.match(/Cidade cobertura:\s*(.+)/)?.[1]?.trim() ?? ''
-  const bairro_cobertura = bairro ?? ''
+  const plano_velocidade = observacao?.match(/Plano:\s*(.+?)\s*-/)?.[1]?.trim() ?? ''
+  const plano_preco = observacao?.match(/-\s*(.+?)\s*\|/)?.[1]?.trim() ?? ''
 
-  // 1. Gravar no banco
-  let leadId: number
-  try {
-    const { rows } = await pool.query(
-      `INSERT INTO leads (
-        cidade_cobertura, bairro_cobertura, plano_velocidade, plano_preco,
-        vencimento, aceita_taxa_instalacao,
-        nome, cpf, email, whatsapp,
-        cep, logradouro, numero, complemento,
-        bairro_endereco, cidade_endereco, estado, ponto_referencia,
-        otp_verificado
-      ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19
-      ) RETURNING id`,
-      [
-        cidade_cobertura, bairro_cobertura, velocidade, preco,
-        vencimento, true,
-        nome, cpfcnpj, email, celular,
-        cep, logradouro, numero, complemento,
-        bairro, cidade, uf, pontoreferencia,
-        false,
-      ]
-    )
-    leadId = rows[0].id
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (msg.includes('unique') || msg.includes('cpf')) {
-      return NextResponse.json({ status: 'erro cpf ja cadastrado' })
+  // ── 1. Atualizar banco com endereço e step_atual = 3 ─────────────────────
+  const dbLeadId = lead_id ? parseInt(lead_id) : null
+
+  if (dbLeadId) {
+    try {
+      await pool.query(
+        `UPDATE leads SET
+          cep = $1, logradouro = $2, numero = $3, complemento = $4,
+          bairro_endereco = $5, cidade_endereco = $6, estado = $7,
+          ponto_referencia = $8, step_atual = 3
+        WHERE id = $9`,
+        [
+          cep.replace(/\D/g, ''), logradouro, numero, complemento ?? null,
+          bairro, cidade, uf,
+          pontoreferencia, dbLeadId,
+        ]
+      )
+    } catch (err) {
+      console.error('[STEP3 DB ERROR]', err)
     }
-    console.error('[DB ERROR]', msg)
-    return NextResponse.json({ status: 'error', message: 'Erro ao salvar cadastro' }, { status: 500 })
+  } else {
+    // fallback: lead chegou direto no submit sem passar pelos steps
+    try {
+      await pool.query(
+        `INSERT INTO leads (
+          cidade_cobertura, bairro_cobertura, plano_velocidade, plano_preco,
+          vencimento, aceita_taxa_instalacao,
+          nome, cpf, email, whatsapp,
+          cep, logradouro, numero, complemento,
+          bairro_endereco, cidade_endereco, estado, ponto_referencia,
+          otp_verificado, step_atual
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
+        [
+          cidade_cobertura, bairro, plano_velocidade, plano_preco,
+          vencimento, true,
+          nome, cpfcnpj, email, celular,
+          cep.replace(/\D/g, ''), logradouro, numero, complemento ?? null,
+          bairro, cidade, uf, pontoreferencia,
+          false, 3,
+        ]
+      )
+    } catch (err) {
+      console.error('[FALLBACK DB ERROR]', err)
+    }
   }
 
-  // 2. Chamar SGP
+  // ── 2. Chamar SGP ─────────────────────────────────────────────────────────
   let sgpOk = false
   let sgpResponse: unknown = null
+  let sgpMessage = 'Erro no cadastro'
+
   try {
     const sgpBody = new URLSearchParams({
       app: process.env.SGP_APP ?? '',
@@ -110,27 +119,39 @@ export async function POST(request: Request) {
       body: sgpBody,
     })
     sgpResponse = await sgpRes.json()
-    sgpOk = (sgpResponse as Record<string, string>).message === 'Pre-cadastro criado com sucesso'
+    const sgpData = sgpResponse as Record<string, string>
 
-    await pool.query(
-      `UPDATE leads SET sgp_status = $1, sgp_response = $2 WHERE id = $3`,
-      [sgpOk ? 'enviado' : 'erro', JSON.stringify(sgpResponse), leadId]
-    )
+    if (sgpData.message === 'Pre-cadastro criado com sucesso') {
+      sgpOk = true
+      sgpMessage = 'Realizado com sucesso'
+    } else if (sgpData.error?.includes('CPF') || sgpData.message?.includes('CPF')) {
+      sgpMessage = 'CPF já cadastrado'
+    } else {
+      sgpMessage = sgpData.error ?? sgpData.message ?? 'Erro no cadastro'
+    }
+
+    if (dbLeadId) {
+      await pool.query(
+        `UPDATE leads SET sgp_status = $1, sgp_response = $2 WHERE id = $3`,
+        [sgpOk ? 'enviado' : 'erro', JSON.stringify(sgpResponse), dbLeadId]
+      )
+    }
   } catch (err) {
     console.error('[SGP ERROR]', err)
-    await pool.query(
-      `UPDATE leads SET sgp_status = 'erro', sgp_response = $1 WHERE id = $2`,
-      [JSON.stringify({ error: String(err) }), leadId]
-    )
+    if (dbLeadId) {
+      await pool.query(
+        `UPDATE leads SET sgp_status = 'erro', sgp_response = $1 WHERE id = $2`,
+        [JSON.stringify({ error: String(err) }), dbLeadId]
+      )
+    }
   }
 
-  // 3. Notificar Fluenzo — callback com resultado do SGP
+  // ── 3. Notificar Fluenzo ──────────────────────────────────────────────────
   try {
     const fluenzoCallback = {
       status: sgpOk,
-      message: sgpOk
-        ? 'Realizado com sucesso'
-        : ((sgpResponse as Record<string, string>)?.error ?? 'Erro no cadastro'),
+      message: sgpMessage,
+      token: token ?? '',
       ...body,
     }
     const fluenzoRes = await fetch(process.env.FLUENZO_URL ?? '', {
@@ -139,19 +160,23 @@ export async function POST(request: Request) {
       body: JSON.stringify(fluenzoCallback),
     })
     const fluenzoResponse = await fluenzoRes.json()
-    await pool.query(
-      `UPDATE leads SET fluenzo_status = 'enviado', fluenzo_response = $1 WHERE id = $2`,
-      [JSON.stringify(fluenzoResponse), leadId]
-    )
+    if (dbLeadId) {
+      await pool.query(
+        `UPDATE leads SET fluenzo_status = 'enviado', fluenzo_response = $1 WHERE id = $2`,
+        [JSON.stringify(fluenzoResponse), dbLeadId]
+      )
+    }
   } catch (err) {
     console.error('[FLUENZO ERROR]', err)
-    await pool.query(
-      `UPDATE leads SET fluenzo_status = 'erro', fluenzo_response = $1 WHERE id = $2`,
-      [JSON.stringify({ error: String(err) }), leadId]
-    )
+    if (dbLeadId) {
+      await pool.query(
+        `UPDATE leads SET fluenzo_status = 'erro', fluenzo_response = $1 WHERE id = $2`,
+        [JSON.stringify({ error: String(err) }), dbLeadId]
+      )
+    }
   }
 
-  // 4. E-mail para atendimento
+  // ── 4. E-mail para atendimento ────────────────────────────────────────────
   try {
     await mailer.sendMail({
       from: `"KN Internet" <${process.env.SMTP_USER}>`,
@@ -164,12 +189,12 @@ export async function POST(request: Request) {
           <tr><td><b>CPF</b></td><td>${cpfcnpj}</td></tr>
           <tr><td><b>E-mail</b></td><td>${email}</td></tr>
           <tr><td><b>WhatsApp</b></td><td>${celular}</td></tr>
-          <tr><td><b>Plano</b></td><td>${velocidade} — ${preco}</td></tr>
-          <tr><td><b>Bairro cobertura</b></td><td>${bairro_cobertura}</td></tr>
+          <tr><td><b>Plano</b></td><td>${plano_velocidade} — ${plano_preco}</td></tr>
+          <tr><td><b>Bairro cobertura</b></td><td>${bairro}</td></tr>
           <tr><td><b>Cidade cobertura</b></td><td>${cidade_cobertura}</td></tr>
           <tr><td><b>Vencimento</b></td><td>Dia ${vencimento}</td></tr>
-          <tr><td><b>SGP</b></td><td>${sgpOk ? '✅ Enviado' : '⚠️ Erro'}</td></tr>
-          <tr><td><b>Lead ID</b></td><td>#${leadId}</td></tr>
+          <tr><td><b>SGP</b></td><td>${sgpOk ? '✅ Enviado' : '⚠️ ' + sgpMessage}</td></tr>
+          <tr><td><b>Lead ID</b></td><td>#${dbLeadId}</td></tr>
         </table>
       `,
     })
@@ -177,13 +202,12 @@ export async function POST(request: Request) {
     console.error('[MAIL ERROR]', err)
   }
 
-  // Resposta final
+  // ── Resposta final ────────────────────────────────────────────────────────
   if (sgpOk) {
     return NextResponse.json({ status: 'success' })
   }
 
-  const sgpMsg = (sgpResponse as Record<string, string>)?.error ?? ''
-  if (sgpMsg.includes('CPF')) {
+  if (sgpMessage === 'CPF já cadastrado') {
     return NextResponse.json({ status: 'erro cpf ja cadastrado' })
   }
 
