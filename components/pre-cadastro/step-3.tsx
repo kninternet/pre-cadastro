@@ -29,6 +29,7 @@ interface Step3Props {
   errors: Record<string, boolean>
   onSubmit: () => Promise<void>
   onBack: () => void
+  onGoToStep1: () => void
   isSubmitting: boolean
 }
 
@@ -53,6 +54,7 @@ export function Step3({
   errors,
   onSubmit,
   onBack,
+  onGoToStep1,
   isSubmitting,
 }: Step3Props) {
   const [loadingCep, setLoadingCep] = useState(false)
@@ -129,6 +131,18 @@ export function Step3({
     }
   }
 
+  const handleClearCep = () => {
+    setCep("")
+    setCityMismatch(null)
+    setLogradouro("")
+    setBairroCep("")
+    setCidadeEndereco("")
+    setEstado("")
+    setTimeout(() => {
+      document.querySelector<HTMLInputElement>("input[placeholder='00000-000']")?.focus()
+    }, 50)
+  }
+
   return (
     <div>
       <CardHeader
@@ -172,15 +186,30 @@ export function Step3({
             {cityMismatch && (
               <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/10">
                 <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                <div>
+                <div className="flex-1">
                   <p className="text-[13px] font-semibold text-amber-700 dark:text-amber-400">
-                    CEP fora da área de cobertura
+                    CEP de outra cidade
                   </p>
                   <p className="text-[12px] text-amber-600 dark:text-amber-500 mt-0.5 leading-relaxed">
-                    Este CEP pertence a <strong>{cityMismatch}</strong>, mas você selecionou{" "}
-                    <strong>{cidade}</strong> no primeiro passo. Use um CEP de{" "}
+                    O CEP informado pertence a <strong>{cityMismatch}</strong>. Use um CEP de{" "}
                     <strong>{cidade}</strong>.
                   </p>
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={handleClearCep}
+                      className="px-3 py-1.5 text-[12px] font-semibold rounded-lg border border-amber-400 text-amber-700 dark:text-amber-400 bg-white dark:bg-transparent hover:bg-amber-100 dark:hover:bg-amber-900/20 transition-colors"
+                    >
+                      Corrigir CEP
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onGoToStep1}
+                      className="px-3 py-1.5 text-[12px] font-semibold rounded-lg border border-amber-400 text-amber-700 dark:text-amber-400 bg-white dark:bg-transparent hover:bg-amber-100 dark:hover:bg-amber-900/20 transition-colors"
+                    >
+                      Trocar Cidade
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
