@@ -67,7 +67,7 @@ export function OtpVerification({ email, vencimento, onVerified, onResend }: Otp
     setError("")
 
     try {
-      const res = await fetch("/api/otp", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/otp`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, code }),

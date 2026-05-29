@@ -90,7 +90,7 @@ export function Step3({
     if (digits.length === 8) {
       setLoadingCep(true)
       try {
-        const response = await fetch(`/api/cep?cep=${digits}`)
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/cep?cep=${digits}`)
         const data = await response.json()
 
         if (data.error) {

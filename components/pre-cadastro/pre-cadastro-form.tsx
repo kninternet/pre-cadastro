@@ -116,7 +116,7 @@ export function PreCadastroForm() {
 
   const sendOtp = async () => {
     try {
-      await fetch("/api/otp", {
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
@@ -149,7 +149,7 @@ export function PreCadastroForm() {
     }
 
     try {
-      const response = await fetch("/api/submit", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
