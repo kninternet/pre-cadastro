@@ -88,7 +88,13 @@ export function PreCadastroForm() {
     }
 
     setErrors(newErrors)
-    if (!isValid) toast.error("Preencha os campos obrigatórios")
+    if (!isValid) {
+      if (newErrors.aceitaTaxaInstalacao) {
+        toast.error("Confirme o aceite da taxa de instalação para continuar")
+      } else {
+        toast.error("Preencha os campos obrigatórios")
+      }
+    }
     return isValid
   }
 
@@ -281,6 +287,7 @@ export function PreCadastroForm() {
             errors={errors}
             onSubmit={handleSubmit}
             onBack={() => goToStep(2)}
+            onGoToStep1={() => goToStep(1)}
             isSubmitting={isSubmitting}
           />
         )}
