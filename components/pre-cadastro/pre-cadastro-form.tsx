@@ -20,6 +20,8 @@ export function PreCadastroForm() {
   const [flowState, setFlowState] = useState<FlowState>("form")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, boolean>>({})
+  const [leadId, setLeadId] = useState<number | null>(null)
+  const [sessionId] = useState(() => `sess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
 
   // Step 1
   const [cidade, setCidade] = useState("")
@@ -98,15 +100,37 @@ export function PreCadastroForm() {
     return isValid
   }
 
-  const goToStep = (step: number) => {
+  const goToStep = async (step: number) => {
     if (step > currentStep) {
       if (!validateStep(currentStep)) return
 
       if (currentStep === 1) {
         trackStep1Next({ cidade, bairro, plano, vencimento })
+        try {
+          const res = await fetch("/api/step1", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: sessionId, cidade, bairro, plano, vencimento, aceita_taxa_instalacao: aceitaTaxaInstalacao }),
+          })
+          const data = await res.json()
+          if (data.lead_id) setLeadId(data.lead_id)
+        } catch {
+          console.error("[STEP1 ERROR]")
+        }
       }
       if (currentStep === 2) {
         trackStep2Next()
+        try {
+          const res = await fetch("/api/step2", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lead_id: leadId, nome: nome.trim(), cpf: cpf.replace(/\D/g, ""), email: email.trim(), whatsapp: whatsapp.replace(/\D/g, "") }),
+          })
+          const data = await res.json()
+          if (data.lead_id) setLeadId(data.lead_id)
+        } catch {
+          console.error("[STEP2 ERROR]")
+        }
       }
     }
     setCurrentStep(step)
@@ -146,6 +170,7 @@ export function PreCadastroForm() {
       email: email.trim(),
       celular: whatsapp.replace(/\D/g, ""),
       ...(token && { token }),
+      ...(leadId && { lead_id: String(leadId) }),
     }
 
     try {
