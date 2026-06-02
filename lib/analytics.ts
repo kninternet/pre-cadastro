@@ -5,6 +5,11 @@
  *   • GTM dataLayer  → GA4 + qualquer outra tag configurada no GTM
  *   • Meta Pixel fbq → Eventos padrão e customizados
  *
+ * DEDUPLICAÇÃO META CAPI
+ * Cada evento que tem um espelho server-side (CAPI) recebe um `eventID`
+ * gerado aqui e passado tanto para o fbq() quanto para a API do backend.
+ * A Meta usa o mesmo event_id para descartar duplicatas automaticamente.
+ *
  * Eventos mapeados:
  *   step1_view   — usuário chegou no Step 1
  *   step1_next   — avançou do Step 1 com cidade/bairro/plano escolhidos
@@ -33,13 +38,45 @@ function pushGTM(payload: GTMEvent) {
   window.dataLayer.push(payload)
 }
 
-function pushPixel(eventName: string, params?: Record<string, unknown>) {
+function pushPixel(eventName: string, params?: Record<string, unknown>, eventID?: string) {
   if (typeof window === 'undefined') return
   if (typeof window.fbq !== 'function') return
+  const options = eventID ? { eventID } : undefined
   if (params) {
-    window.fbq('track', eventName, params)
+    window.fbq('track', eventName, params, options)
   } else {
-    window.fbq('trackCustom', eventName)
+    window.fbq('trackCustom', eventName, {}, options)
+  }
+}
+
+/** Lê o cookie _fbp do navegador (usado para enriquecer o CAPI no backend) */
+function getFbp(): string | undefined {
+  if (typeof document === 'undefined') return undefined
+  return document.cookie
+    .split('; ')
+    .find(row => row.startsWith('_fbp='))
+    ?.split('=')[1]
+}
+
+/** Lê o GA client_id do cookie _ga */
+export function getGaClientId(): string | undefined {
+  if (typeof document === 'undefined') return undefined
+  const raw = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('_ga='))
+    ?.split('=')[1]
+  if (!raw) return undefined
+  // Formato: GA1.1.XXXXXXXXXX.XXXXXXXXXX → retorna a parte numérica
+  const parts = raw.split('.')
+  return parts.length >= 4 ? `${parts[2]}.${parts[3]}` : raw
+}
+
+/** Monta o bloco de contexto do navegador para enviar ao backend */
+export function getBrowserContext() {
+  return {
+    client_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+    fbp: getFbp(),
+    ga_client_id: getGaClientId(),
   }
 }
 
@@ -59,63 +96,87 @@ export function trackStep1View() {
 
 /**
  * Usuário avançou do Step 1 (cidade / bairro / plano escolhidos)
- * Passamos os dados para criar audiências segmentadas por região/plano
+ * Retorna o eventID gerado — deve ser enviado junto ao POST /api/step1
+ * para deduplicação do evento InitiateCheckout no CAPI.
  */
 export function trackStep1Next(data: {
   cidade: string
   bairro: string
   plano: string
   vencimento: string
+  sessionId: string
 }) {
+  const eventID = `kn_step1_${data.sessionId}`
+
   pushGTM({
     event: 'kn_step1_complete',
-    kn_cidade: data.cidade,
-    kn_bairro: data.bairro,
-    kn_plano: data.plano,
+    kn_cidade:    data.cidade,
+    kn_bairro:    data.bairro,
+    kn_plano:     data.plano,
     kn_vencimento: data.vencimento,
   })
-  pushPixel('kn_step1_complete', {
-    cidade: data.cidade,
-    bairro: data.bairro,
-    plano: data.plano,
-  })
+
+  // InitiateCheckout client-side — espelhado no CAPI server-side com mesmo eventID
+  pushPixel('InitiateCheckout', {
+    content_name:     data.plano,
+    content_category: `${data.cidade} – ${data.bairro}`,
+  }, eventID)
+
+  return eventID
 }
 
-/** Usuário avançou do Step 2 (dados pessoais preenchidos) */
-export function trackStep2Next() {
+/**
+ * Usuário avançou do Step 2 (dados pessoais preenchidos)
+ * Retorna o eventID — deve ser enviado junto ao POST /api/step2.
+ */
+export function trackStep2Next(leadId: number) {
+  const eventID = `kn_step2_${leadId}`
+
   pushGTM({ event: 'kn_step2_complete' })
-  pushPixel('kn_step2_complete')
-  // Meta: Lead padrão — indica intenção qualificada
-  window.fbq?.('track', 'Lead')
+
+  // Lead client-side — espelhado no CAPI server-side com mesmo eventID
+  pushPixel('Lead', {}, eventID)
+
+  return eventID
 }
 
-/** Usuário clicou em "Confirmar" no Step 3 (submit iniciado) */
-export function trackStep3Submit() {
+/**
+ * Usuário clicou em "Confirmar" no Step 3 (submit iniciado)
+ * Retorna o eventID — deve ser enviado junto ao POST /api/submit.
+ */
+export function trackStep3Submit(leadId: number | null, sessionId: string) {
+  const eventID = `kn_submit_${leadId ?? sessionId}`
   pushGTM({ event: 'kn_step3_submit' })
-  pushPixel('kn_step3_submit')
+  pushPixel('kn_step3_submit', {}, eventID)
+  return eventID
 }
 
 /**
  * Lead gravado com sucesso no SGP
- * Este é o evento de conversão principal — mapear como Compra/CompleteRegistration
+ * CompleteRegistration client-side — espelhado no CAPI server-side.
  */
 export function trackLeadSuccess(data: {
   cidade: string
   bairro: string
   plano: string
+  leadId: number | null
+  sessionId: string
 }) {
+  const eventID = `kn_submit_${data.leadId ?? data.sessionId}`
+
   pushGTM({
-    event: 'kn_lead_success',
+    event:     'kn_lead_success',
     kn_cidade: data.cidade,
     kn_bairro: data.bairro,
-    kn_plano: data.plano,
+    kn_plano:  data.plano,
   })
-  // Meta: CompleteRegistration = conversão principal
-  window.fbq?.('track', 'CompleteRegistration', {
-    content_name: data.plano,
+
+  // Mesmo eventID do trackStep3Submit → Meta deduplica automaticamente
+  pushPixel('CompleteRegistration', {
+    content_name:     data.plano,
     content_category: `${data.cidade} – ${data.bairro}`,
-    status: 'success',
-  })
+    status:           'success',
+  }, eventID)
 }
 
 /** Erro no submit */
