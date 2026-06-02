@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { Pool } from 'pg'
 import nodemailer from 'nodemailer'
+import { sendCAPIEvent } from '@/lib/meta-capi'
+import { sendGA4Event } from '@/lib/ga4-mp'
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -52,15 +54,22 @@ export async function POST(request: Request) {
     bairro, cidade, uf, cep,
     pontoreferencia, observacao,
     token,
+    // Contexto do navegador
+    client_ip_address, client_user_agent, fbp, ga_client_id, session_id,
   } = body
 
   const { logradouro, numero, complemento } = parseLogradouro(logradouroRaw ?? '')
-  const vencimento = observacao?.match(/Vencimento:\s*Dia\s*(\S+)/)?.[1] ?? ''
+  const vencimento       = observacao?.match(/Vencimento:\s*Dia\s*(\S+)/)?.[1] ?? ''
   const cidade_cobertura = observacao?.match(/Cidade cobertura:\s*(.+)/)?.[1]?.trim() ?? ''
   const plano_velocidade = observacao?.match(/Plano:\s*(.+?)\s*-/)?.[1]?.trim() ?? ''
-  const plano_preco = observacao?.match(/-\s*(.+?)\s*\|/)?.[1]?.trim() ?? ''
+  const plano_preco      = observacao?.match(/-\s*(.+?)\s*\|/)?.[1]?.trim() ?? ''
 
-  // ── 1. Banco ──────────────────────────────────────────────────────────────
+  // Extrai valor numérico do preço (ex: "R$ 89,90" → 89.90)
+  const planoValor = parseFloat(
+    plano_preco.replace(/[^\d,]/g, '').replace(',', '.') || '0'
+  )
+
+  // ── 1. Banco ────────────────────────────────────────────────────────────────
   const dbLeadId = lead_id ? parseInt(lead_id) : null
 
   if (dbLeadId) {
@@ -105,7 +114,7 @@ export async function POST(request: Request) {
     }
   }
 
-  // ── 2. SGP ────────────────────────────────────────────────────────────────
+  // ── 2. SGP ──────────────────────────────────────────────────────────────────
   let sgpOk = false
   let sgpResponse: unknown = null
   let sgpMessage = 'Erro no cadastro'
@@ -157,7 +166,7 @@ export async function POST(request: Request) {
     }
   }
 
-  // ── 3. Fluenzo ────────────────────────────────────────────────────────────
+  // ── 3. Fluenzo ──────────────────────────────────────────────────────────────
   try {
     const fluenzoCallback = {
       status: sgpOk,
@@ -191,7 +200,7 @@ export async function POST(request: Request) {
     }
   }
 
-  // ── 4. E-mail ─────────────────────────────────────────────────────────────
+  // ── 4. E-mail ───────────────────────────────────────────────────────────────
   try {
     await mailer.sendMail({
       from: `"KN Internet" <${process.env.SMTP_USER}>`,
@@ -217,11 +226,52 @@ export async function POST(request: Request) {
     console.error('[MAIL ERROR]', err)
   }
 
-  // ── Resposta ──────────────────────────────────────────────────────────────
-  if (sgpOk) {
-    return NextResponse.json({ status: 'success' })
-  }
+  // ── 5. Meta CAPI — CompleteRegistration ────────────────────────────────────
+  // Disparado independente do resultado do SGP — o lead chegou ao fim do funil
+  const nomeParts = nome.trim().split(' ')
+  const eventId   = `kn_submit_${dbLeadId ?? session_id ?? Date.now()}`
 
+  void sendCAPIEvent({
+    eventName: 'CompleteRegistration',
+    eventId,
+    userData: {
+      email,
+      phone:           `55${celular.replace(/\D/g, '')}`,
+      firstName:       nomeParts[0],
+      lastName:        nomeParts.length > 1 ? nomeParts[nomeParts.length - 1] : undefined,
+      city:            cidade_cobertura || cidade,
+      state:           uf,
+      zipCode:         cep,
+      country:         'br',
+      clientIpAddress: client_ip_address,
+      clientUserAgent: client_user_agent,
+      fbp,
+    },
+    customData: {
+      contentName:     `${plano_velocidade} — ${plano_preco}`,
+      contentCategory: `${cidade_cobertura} – ${bairro}`,
+      value:           planoValor,
+      currency:        'BRL',
+      status:          sgpOk ? 'success' : 'pending',
+    },
+  })
+
+  // ── 6. GA4 Measurement Protocol — conversion ────────────────────────────────
+  void sendGA4Event({
+    clientId: ga_client_id ?? session_id ?? String(dbLeadId),
+    eventName: 'conversion',
+    params: {
+      lead_id:        dbLeadId ?? 0,
+      kn_plano:       plano_velocidade,
+      kn_cidade:      cidade_cobertura,
+      kn_bairro:      bairro,
+      sgp_status:     sgpOk ? 'enviado' : 'erro',
+      value:          planoValor,
+      currency:       'BRL',
+    },
+  })
+
+  // ── Resposta ────────────────────────────────────────────────────────────────
   if (sgpMessage === 'CPF já cadastrado') {
     return NextResponse.json({ status: 'erro cpf ja cadastrado' })
   }
