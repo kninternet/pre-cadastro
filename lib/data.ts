@@ -91,5 +91,16 @@ export const DATA: Record<string, CityData> = {
         { v: "600MB", p: "R$ 94,90" }
       ],
     }
+  },
+    "Queimados": {
+    vencimentos: ["5"],
+    bairros: {
+      "Queimados": [
+        { v: "300MB", p: "R$ 100,00" },
+        { v: "500MB", p: "R$ 120,00" },
+        { v: "600MB", p: "R$ 150,00" },
+        { v: "800MB", p: "R$ 180,00" }
+      ],
+    }
   }
 }
