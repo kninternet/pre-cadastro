@@ -52,20 +52,20 @@ function sha256(value: string): string {
 function hashUserData(u: UserData) {
   const hashed: Record<string, string | undefined> = {}
 
-  if (u.email)     hashed.em     = sha256(u.email)
-  if (u.phone)     hashed.ph     = sha256(u.phone.replace(/\D/g, ''))
-  if (u.firstName) hashed.fn     = sha256(u.firstName.split(' ')[0])
-  if (u.lastName)  hashed.ln     = sha256(u.lastName)
-  if (u.city)      hashed.ct     = sha256(u.city)
-  if (u.state)     hashed.st     = sha256(u.state.toLowerCase())
-  if (u.zipCode)   hashed.zp     = sha256(u.zipCode.replace(/\D/g, ''))
-  if (u.country)   hashed.country = sha256(u.country.toLowerCase())
+  if (u.email) hashed.em = sha256(u.email)
+  if (u.phone) hashed.ph = sha256(u.phone.replace(/\D/g, ''))
+  if (u.firstName) hashed.fn = sha256(u.firstName.split(' ')[0])
+  if (u.lastName) hashed.ln = sha256(u.lastName)
+  if (u.city) hashed.ct = sha256(u.city)
+  if (u.state) hashed.st = sha256(u.state.toLowerCase())
+  if (u.zipCode) hashed.zp = sha256(u.zipCode.replace(/\D/g, ''))
+  if (u.country) hashed.country = sha256(u.country.toLowerCase())
 
   // Estes campos NÃO são hasheados
   if (u.clientIpAddress) hashed.client_ip_address = u.clientIpAddress
   if (u.clientUserAgent) hashed.client_user_agent = u.clientUserAgent
-  if (u.fbp)             hashed.fbp = u.fbp
-  if (u.fbc)             hashed.fbc = u.fbc
+  if (u.fbp) hashed.fbp = u.fbp
+  if (u.fbc) hashed.fbc = u.fbc
 
   return hashed
 }
@@ -74,7 +74,7 @@ function hashUserData(u: UserData) {
 
 export async function sendCAPIEvent(params: CAPIEventParams): Promise<void> {
   const pixelId = process.env.META_PIXEL_ID
-  const token   = process.env.META_CAPI_TOKEN
+  const token = process.env.META_CAPI_TOKEN
 
   if (!pixelId || !token) {
     console.warn('[META CAPI] META_PIXEL_ID ou META_CAPI_TOKEN não configurados')
@@ -84,32 +84,35 @@ export async function sendCAPIEvent(params: CAPIEventParams): Promise<void> {
   const payload = {
     data: [
       {
-        event_name:        params.eventName,
-        event_time:        Math.floor(Date.now() / 1000),
-        event_id:          params.eventId,
-        event_source_url:  params.eventSourceUrl ?? 'https://cadastro.kninternet.com.br',
-        action_source:     'website',
-        user_data:         hashUserData(params.userData),
+        event_name: params.eventName,
+        event_time: Math.floor(Date.now() / 1000),
+        event_id: params.eventId,
+        event_source_url: params.eventSourceUrl ?? 'https://cadastro.kninternet.com.br',
+        action_source: 'website',
+        user_data: hashUserData(params.userData),
         ...(params.customData && {
           custom_data: {
-            content_name:     params.customData.contentName,
+            content_name: params.customData.contentName,
             content_category: params.customData.contentCategory,
-            value:            params.customData.value,
-            currency:         params.customData.currency ?? 'BRL',
-            status:           params.customData.status,
+            value: params.customData.value,
+            currency: params.customData.currency ?? 'BRL',
+            status: params.customData.status,
           },
         }),
       },
     ],
+    ...(process.env.META_CAPI_TEST_CODE && {
+      test_event_code: process.env.META_CAPI_TEST_CODE,
+    }),
   }
 
   try {
     const res = await fetch(
       `https://graph.facebook.com/v19.0/${pixelId}/events?access_token=${token}`,
       {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload),
+        body: JSON.stringify(payload),
       }
     )
     const json = await res.json()
