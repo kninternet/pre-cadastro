@@ -179,7 +179,7 @@ export async function POST(request: Request) {
       portador_id: parseInt(process.env.SGP_PORTADOR_ID ?? '32'),
       nas: process.env.SGP_NAS ?? 'RB_PEIXOTO_STA_CATARINA',
       modoaquisicao: 1,
-      tipo_equipamento: parseInt(process.env.SGP_TIPO_EQUIPAMENTO ?? '6'),
+      tipo_equipamento: process.env.SGP_TIPO_EQUIPAMENTO ?? 'teste', 
       autocobranca: true,
       login: loginPppoe,
       senha: senhaPppoe,
