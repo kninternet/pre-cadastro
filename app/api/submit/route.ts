@@ -71,11 +71,11 @@ export async function POST(request: Request) {
   } = body
 
   const { logradouro, numero, complemento } = parseLogradouro(logradouroRaw ?? '')
-  const vencimento       = observacao?.match(/Vencimento:\s*Dia\s*(\S+)/)?.[1] ?? ''
+  const vencimento = observacao?.match(/Vencimento:\s*Dia\s*(\S+)/)?.[1] ?? ''
   const cidade_cobertura = observacao?.match(/Cidade cobertura:\s*(.+)/)?.[1]?.trim() ?? ''
   const plano_velocidade = observacao?.match(/Plano:\s*(.+?)\s*-/)?.[1]?.trim() ?? ''
-  const plano_preco      = observacao?.match(/-\s*(.+?)\s*\|/)?.[1]?.trim() ?? ''
-  const planoValor       = parseFloat(plano_preco.replace(/[^\d,]/g, '').replace(',', '.') || '0')
+  const plano_preco = observacao?.match(/-\s*(.+?)\s*\|/)?.[1]?.trim() ?? ''
+  const planoValor = parseFloat(plano_preco.replace(/[^\d,]/g, '').replace(',', '.') || '0')
 
   const dbLeadId = lead_id ? parseInt(lead_id) : null
   const cpfLimpo = cpfcnpj.replace(/\D/g, '')
@@ -130,8 +130,7 @@ export async function POST(request: Request) {
           nome,
           cpfcnpj: cpfLimpo,
           email,
-          celular: celular.replace(/\D/g, ''),
-          endereco: enderecoSgp,
+          celular: celular.replace(/\D/g, '').replace(/^(\d{2})(\d{8})$/, '$19$2'), endereco: enderecoSgp,
         }),
       },
       8000
@@ -166,30 +165,30 @@ export async function POST(request: Request) {
   // ── 3. SGP CRM — Criar Contrato ─────────────────────────────────────────────
   if (sgpOk && sgpClienteId) {
     const vencimentoDia = parseInt(vencimento) || 5
-    const loginPppoe    = cpfLimpo
-    const senhaPppoe    = gerarSenha(cpfLimpo)
+    const loginPppoe = cpfLimpo
+    const senhaPppoe = gerarSenha(cpfLimpo)
 
     const sgpContratoBody = {
-      app:                  process.env.SGP_APP ?? '',
-      token:                process.env.SGP_TOKEN ?? '',
-      contrato_id:          parseInt(process.env.SGP_CONTRATO_ID ?? '3'),
-      pop_id:               parseInt(process.env.SGP_POP_ID ?? '1'),
-      plano_id:             parseInt(process.env.SGP_PLANO_ID ?? '7'),
-      vencimento_dia:       vencimentoDia,
-      forma_cobranca_id:    parseInt(process.env.SGP_FORMA_COBRANCA_ID ?? '3'),
-      portador_id:          parseInt(process.env.SGP_PORTADOR_ID ?? '32'),
-      nas:                  process.env.SGP_NAS ?? 'RB_PEIXOTO_STA_CATARINA',
-      modoaquisicao:        1,
-      tipo_equipamento:     parseInt(process.env.SGP_TIPO_EQUIPAMENTO ?? '6'),
-      autocobranca:         true,
-      login:                loginPppoe,
-      senha:                senhaPppoe,
-      central_login:        loginPppoe,
-      central_senha:        senhaPppoe,
-      logins_simult:        1,
-      os_instalacao:        false,
-      endereco_cobranca:    enderecoSgp,
-      endereco_instalacao:  enderecoSgp,
+      app: process.env.SGP_APP ?? '',
+      token: process.env.SGP_TOKEN ?? '',
+      contrato_id: parseInt(process.env.SGP_CONTRATO_ID ?? '3'),
+      pop_id: parseInt(process.env.SGP_POP_ID ?? '1'),
+      plano_id: parseInt(process.env.SGP_PLANO_ID ?? '7'),
+      vencimento_dia: vencimentoDia,
+      forma_cobranca_id: parseInt(process.env.SGP_FORMA_COBRANCA_ID ?? '3'),
+      portador_id: parseInt(process.env.SGP_PORTADOR_ID ?? '32'),
+      nas: process.env.SGP_NAS ?? 'RB_PEIXOTO_STA_CATARINA',
+      modoaquisicao: 1,
+      tipo_equipamento: parseInt(process.env.SGP_TIPO_EQUIPAMENTO ?? '6'),
+      autocobranca: true,
+      login: loginPppoe,
+      senha: senhaPppoe,
+      central_login: loginPppoe,
+      central_senha: senhaPppoe,
+      logins_simult: 1,
+      os_instalacao: false,
+      endereco_cobranca: enderecoSgp,
+      endereco_instalacao: enderecoSgp,
     }
 
     try {
@@ -304,30 +303,30 @@ export async function POST(request: Request) {
 
   // ── 8. Meta CAPI ───────────────────────────────────────────────────────────
   const nomeParts = nome.trim().split(' ')
-  const eventId   = `kn_submit_${dbLeadId ?? session_id ?? Date.now()}`
+  const eventId = `kn_submit_${dbLeadId ?? session_id ?? Date.now()}`
 
   void sendCAPIEvent({
     eventName: 'CompleteRegistration',
     eventId,
     userData: {
       email,
-      phone:           `55${celular.replace(/\D/g, '')}`,
-      firstName:       nomeParts[0],
-      lastName:        nomeParts.length > 1 ? nomeParts[nomeParts.length - 1] : undefined,
-      city:            cidade_cobertura || cidade,
-      state:           uf,
-      zipCode:         cep,
-      country:         'br',
+      phone: `55${celular.replace(/\D/g, '')}`,
+      firstName: nomeParts[0],
+      lastName: nomeParts.length > 1 ? nomeParts[nomeParts.length - 1] : undefined,
+      city: cidade_cobertura || cidade,
+      state: uf,
+      zipCode: cep,
+      country: 'br',
       clientIpAddress: client_ip_address,
       clientUserAgent: client_user_agent,
       fbp,
     },
     customData: {
-      contentName:     `${plano_velocidade} — ${plano_preco}`,
+      contentName: `${plano_velocidade} — ${plano_preco}`,
       contentCategory: `${cidade_cobertura} – ${bairro}`,
-      value:           planoValor,
-      currency:        'BRL',
-      status:          sgpOk ? 'success' : 'pending',
+      value: planoValor,
+      currency: 'BRL',
+      status: sgpOk ? 'success' : 'pending',
     },
   })
 
@@ -336,13 +335,13 @@ export async function POST(request: Request) {
     clientId: ga_client_id ?? session_id ?? String(dbLeadId),
     eventName: 'conversion',
     params: {
-      lead_id:    dbLeadId ?? 0,
-      kn_plano:   plano_velocidade,
-      kn_cidade:  cidade_cobertura,
-      kn_bairro:  bairro,
+      lead_id: dbLeadId ?? 0,
+      kn_plano: plano_velocidade,
+      kn_cidade: cidade_cobertura,
+      kn_bairro: bairro,
       sgp_status: sgpOk ? 'enviado' : 'erro',
-      value:      planoValor,
-      currency:   'BRL',
+      value: planoValor,
+      currency: 'BRL',
     },
   })
 
