@@ -14,29 +14,32 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: 'error', message: 'CPF inválido' }, { status: 400 })
   }
 
+  const app   = process.env.SGP_APP ?? ''
+  const token = process.env.SGP_TOKEN ?? ''
+  const base  = process.env.SGP_BASE_URL ?? 'https://netecom.sgplocal.com.br'
+
+  // SGP GET não aceita body — app e token vão como form params via POST
+  // A documentação usa GET com body (form), mas fetch não permite body em GET
+  // Solução: usar POST na rota de consulta por CPF
   try {
     const sgpRes = await fetchWithTimeout(
-      `${process.env.SGP_BASE_URL ?? 'https://netecom.sgplocal.com.br'}/api/crm/cliente/contratos/?cpfcnpj=${cpf}`,
+      `${base}/api/crm/cliente/contratos/?cpfcnpj=${cpf}`,
       {
-        method: 'GET',
+        method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          app: process.env.SGP_APP ?? '',
-          token: process.env.SGP_TOKEN ?? '',
-        }),
+        body: new URLSearchParams({ app, token }).toString(),
       },
       6000
     )
 
     const data = await sgpRes.json() as Record<string, unknown>
+    console.log('[CHECK-CPF RESPONSE]', JSON.stringify(data))
 
-    // CPF não encontrado no SGP
     if (data.errors) {
       return NextResponse.json({ found: false })
     }
 
-    // CPF encontrado — retorna nome e status dos contratos
-    const contratos = data.contratos as Array<{ status: string; cliente_contrato_id: number }> ?? []
+    const contratos = data.contratos as Array<{ status: string }> ?? []
     const temContratoAtivo = contratos.some(c => c.status?.trim().toLowerCase() === 'ativo')
 
     return NextResponse.json({
@@ -46,7 +49,6 @@ export async function GET(request: Request) {
     })
   } catch (err) {
     console.error('[CHECK-CPF ERROR]', err)
-    // Em caso de timeout ou erro de rede, deixa o fluxo continuar
     return NextResponse.json({ found: false, error: 'timeout' })
   }
 }

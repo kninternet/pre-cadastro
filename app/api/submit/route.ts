@@ -27,7 +27,6 @@ function fetchWithTimeout(url: string, options: RequestInit, ms = 8000): Promise
 }
 
 function parseLogradouro(logradouro: string) {
-  // Tenta padrão "Rua X, 123 - Complemento"
   const match = logradouro.match(/^(.+?),\s*(\S+)(?:\s*-\s*(.+))?$/)
   if (match) {
     return {
@@ -36,7 +35,6 @@ function parseLogradouro(logradouro: string) {
       complemento: match[3]?.trim() ?? null,
     }
   }
-  // Tenta padrão "Rua X 123"
   const matchSemVirgula = logradouro.match(/^(.+?)\s+(\d+\S*)$/)
   if (matchSemVirgula) {
     return {
@@ -46,6 +44,11 @@ function parseLogradouro(logradouro: string) {
     }
   }
   return { logradouro, numero: 'S/N', complemento: null }
+}
+
+function gerarSenha(cpf: string): string {
+  // Senha padrão: primeiros 6 dígitos do CPF + "@Kn"
+  return `${cpf.replace(/\D/g, '').slice(0, 6)}@Kn`
 }
 
 export async function POST(request: Request) {
@@ -75,6 +78,7 @@ export async function POST(request: Request) {
   const planoValor       = parseFloat(plano_preco.replace(/[^\d,]/g, '').replace(',', '.') || '0')
 
   const dbLeadId = lead_id ? parseInt(lead_id) : null
+  const cpfLimpo = cpfcnpj.replace(/\D/g, '')
 
   // ── 1. Banco — endereço (step 3) ────────────────────────────────────────────
   if (dbLeadId) {
@@ -102,24 +106,16 @@ export async function POST(request: Request) {
   let sgpMessage = 'Erro no cadastro'
   let cpfDuplicado = false
 
-  const sgpClienteBody = {
-    app: process.env.SGP_APP ?? '',
-    token: process.env.SGP_TOKEN ?? '',
-    nome,
-    cpfcnpj: cpfcnpj.replace(/\D/g, ''),
-    email,
-    celular: celular.replace(/\D/g, ''),
-    endereco: {
-      logradouro,
-      numero,
-      complemento: complemento ?? '',
-      bairro,
-      cidade,
-      cep: cep.replace(/\D/g, ''),
-      uf,
-      pais: 'BR',
-      pontoreferencia,
-    },
+  const enderecoSgp = {
+    logradouro,
+    numero,
+    complemento: complemento ?? '',
+    bairro,
+    cidade,
+    cep: cep.replace(/\D/g, ''),
+    uf,
+    pais: 'BR',
+    pontoreferencia,
   }
 
   try {
@@ -128,11 +124,20 @@ export async function POST(request: Request) {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sgpClienteBody),
+        body: JSON.stringify({
+          app: process.env.SGP_APP ?? '',
+          token: process.env.SGP_TOKEN ?? '',
+          nome,
+          cpfcnpj: cpfLimpo,
+          email,
+          celular: celular.replace(/\D/g, ''),
+          endereco: enderecoSgp,
+        }),
       },
       8000
     )
     const sgpData = await sgpRes.json() as Record<string, unknown>
+    console.log('[SGP CLIENTE RESPONSE]', JSON.stringify(sgpData))
 
     if (sgpData.cliente_id) {
       sgpClienteId = sgpData.cliente_id as number
@@ -144,54 +149,47 @@ export async function POST(request: Request) {
       cpfDuplicado = true
       sgpMessage = 'CPF já cadastrado'
     } else {
-      sgpMessage = String((sgpData.errors as Record<string, string>)?.cpfcnpj ?? sgpData.message ?? 'Erro no cadastro')
+      sgpMessage = String(
+        (sgpData.errors as Record<string, string>)?.cpfcnpj ??
+        (sgpData.errors as Record<string, string>)?.message ??
+        sgpData.message ??
+        'Erro no cadastro'
+      )
+      console.error('[SGP CLIENTE ERROR]', JSON.stringify(sgpData))
     }
   } catch (err: unknown) {
     const isTimeout = err instanceof Error && err.name === 'AbortError'
     sgpMessage = isTimeout ? 'Timeout SGP' : 'Erro no cadastro'
-    console.error('[SGP CLIENTE ERROR]', err)
+    console.error('[SGP CLIENTE EXCEPTION]', err)
   }
 
-  // ── 3. SGP CRM — Criar Contrato (só se cliente foi criado) ──────────────────
+  // ── 3. SGP CRM — Criar Contrato ─────────────────────────────────────────────
   if (sgpOk && sgpClienteId) {
     const vencimentoDia = parseInt(vencimento) || 5
+    const loginPppoe    = cpfLimpo
+    const senhaPppoe    = gerarSenha(cpfLimpo)
 
     const sgpContratoBody = {
-      app: process.env.SGP_APP ?? '',
-      token: process.env.SGP_TOKEN ?? '',
-      contrato_id: parseInt(process.env.SGP_CONTRATO_ID ?? '1'),
-      pop_id: parseInt(process.env.SGP_POP_ID ?? '1'),
-      plano_id: parseInt(process.env.SGP_PLANO_ID ?? '7'),
-      vencimento_dia: vencimentoDia,
-      forma_cobranca_codigo: parseInt(process.env.SGP_FORMA_COBRANCA_ID ?? '3'),
-      portador_id: parseInt(process.env.SGP_PORTADOR_ID ?? '32'),
-      nas: process.env.SGP_NAS ?? 'RB_PEIXOTO_STA_CATARINA',
-      modoaquisicao: 1,
-      tipo_equipamento: parseInt(process.env.SGP_TIPO_EQUIPAMENTO ?? '6'),
-      os_instalacao: false,
-      autocobranca: false,
-      endereco_cobranca: {
-        logradouro,
-        numero,
-        complemento: complemento ?? '',
-        bairro,
-        cidade,
-        cep: cep.replace(/\D/g, ''),
-        uf,
-        pais: 'BR',
-        pontoreferencia,
-      },
-      endereco_instalacao: {
-        logradouro,
-        numero,
-        complemento: complemento ?? '',
-        bairro,
-        cidade,
-        cep: cep.replace(/\D/g, ''),
-        uf,
-        pais: 'BR',
-        pontoreferencia,
-      },
+      app:                  process.env.SGP_APP ?? '',
+      token:                process.env.SGP_TOKEN ?? '',
+      contrato_id:          parseInt(process.env.SGP_CONTRATO_ID ?? '3'),
+      pop_id:               parseInt(process.env.SGP_POP_ID ?? '1'),
+      plano_id:             parseInt(process.env.SGP_PLANO_ID ?? '7'),
+      vencimento_dia:       vencimentoDia,
+      forma_cobranca_id:    parseInt(process.env.SGP_FORMA_COBRANCA_ID ?? '3'),
+      portador_id:          parseInt(process.env.SGP_PORTADOR_ID ?? '32'),
+      nas:                  process.env.SGP_NAS ?? 'RB_PEIXOTO_STA_CATARINA',
+      modoaquisicao:        1,
+      tipo_equipamento:     parseInt(process.env.SGP_TIPO_EQUIPAMENTO ?? '6'),
+      autocobranca:         true,
+      login:                loginPppoe,
+      senha:                senhaPppoe,
+      central_login:        loginPppoe,
+      central_senha:        senhaPppoe,
+      logins_simult:        1,
+      os_instalacao:        false,
+      endereco_cobranca:    enderecoSgp,
+      endereco_instalacao:  enderecoSgp,
     }
 
     try {
@@ -205,23 +203,24 @@ export async function POST(request: Request) {
         8000
       )
       const contratoData = await contratoRes.json() as Record<string, unknown>
+      console.log('[SGP CONTRATO RESPONSE]', JSON.stringify(contratoData))
 
       if (contratoData.clientecontrato) {
         sgpMessage = 'Cadastro realizado com sucesso'
       } else {
         sgpOk = false
         sgpMessage = String(contratoData.message ?? 'Erro ao criar contrato')
-        console.error('[SGP CONTRATO ERROR]', contratoData)
+        console.error('[SGP CONTRATO ERROR]', JSON.stringify(contratoData))
       }
     } catch (err: unknown) {
       sgpOk = false
       const isTimeout = err instanceof Error && err.name === 'AbortError'
       sgpMessage = isTimeout ? 'Timeout SGP contrato' : 'Erro ao criar contrato'
-      console.error('[SGP CONTRATO ERROR]', err)
+      console.error('[SGP CONTRATO EXCEPTION]', err)
     }
   }
 
-  // ── 4. Atualiza banco com resultado SGP ────────────────────────────────────
+  // ── 4. Atualiza banco ──────────────────────────────────────────────────────
   if (dbLeadId) {
     try {
       await pool.query(
@@ -237,7 +236,7 @@ export async function POST(request: Request) {
     }
   }
 
-  // ── 5. CPF duplicado — retorna imediatamente ───────────────────────────────
+  // ── 5. CPF duplicado ───────────────────────────────────────────────────────
   if (cpfDuplicado) {
     return NextResponse.json({ status: 'erro cpf duplicado' })
   }
@@ -303,7 +302,7 @@ export async function POST(request: Request) {
     console.error('[MAIL ERROR]', err)
   }
 
-  // ── 8. Meta CAPI — CompleteRegistration ────────────────────────────────────
+  // ── 8. Meta CAPI ───────────────────────────────────────────────────────────
   const nomeParts = nome.trim().split(' ')
   const eventId   = `kn_submit_${dbLeadId ?? session_id ?? Date.now()}`
 
@@ -332,7 +331,7 @@ export async function POST(request: Request) {
     },
   })
 
-  // ── 9. GA4 — conversion ────────────────────────────────────────────────────
+  // ── 9. GA4 ─────────────────────────────────────────────────────────────────
   void sendGA4Event({
     clientId: ga_client_id ?? session_id ?? String(dbLeadId),
     eventName: 'conversion',
