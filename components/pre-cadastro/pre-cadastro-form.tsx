@@ -11,6 +11,7 @@ import { OtpVerification } from "./otp-verification"
 import { WelcomeModal } from "./welcome-modal"
 import { formatCPF, formatPhone, validateEmail, validateCPF, validatePhone, validateCEP } from "@/lib/formatters"
 import { trackStep1View, trackStep1Next, trackStep2Next, trackStep3Submit, trackLeadSuccess, trackLeadError } from "@/lib/analytics"
+import { getBrowserContext } from "@/lib/analytics"
 
 type FlowState = "form" | "otp" | "done"
 
@@ -23,22 +24,20 @@ export function PreCadastroForm() {
   const [leadId, setLeadId] = useState<number | null>(null)
   const [sessionId] = useState(() => `sess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
 
-  // Step 1
+  // ── Step 1 — Dados pessoais ─────────────────────────────────────────────────
+  const [nome, setNome] = useState("")
+  const [email, setEmail] = useState("")
+  const [whatsapp, setWhatsapp] = useState("")
+
+  // ── Step 2 — Cobertura, plano, CPF ─────────────────────────────────────────
   const [cidade, setCidade] = useState("")
   const [bairro, setBairro] = useState("")
   const [plano, setPlano] = useState("")
   const [vencimento, setVencimento] = useState("")
   const [aceitaTaxaInstalacao, setAceitaTaxaInstalacao] = useState(false)
-
-  // Step 2
-  const [nome, setNome] = useState("")
   const [cpf, setCpf] = useState("")
-  const [email, setEmail] = useState("")
-  const [whatsapp, setWhatsapp] = useState("")
-  const [telefoneFixo, setTelefoneFixo] = useState("")
-  const [telefoneResidencial, setTelefoneResidencial] = useState("")
 
-  // Step 3
+  // ── Step 3 — Endereço ──────────────────────────────────────────────────────
   const [cep, setCep] = useState("")
   const [logradouro, setLogradouro] = useState("")
   const [numero, setNumero] = useState("")
@@ -50,15 +49,15 @@ export function PreCadastroForm() {
 
   useEffect(() => {
     trackStep1View()
-    const nomeParam = searchParams.get("nome")
+    const nomeParam    = searchParams.get("nome")
     const whatsappParam = searchParams.get("whatsapp") || searchParams.get("numero_whatsapp")
-    const cpfParam = searchParams.get("cpf")
-    const emailParam = searchParams.get("email")
+    const cpfParam     = searchParams.get("cpf")
+    const emailParam   = searchParams.get("email")
 
-    if (nomeParam) setNome(nomeParam)
+    if (nomeParam)    setNome(nomeParam)
     if (whatsappParam) setWhatsapp(formatPhone(whatsappParam))
-    if (cpfParam) setCpf(formatCPF(cpfParam))
-    if (emailParam) setEmail(emailParam)
+    if (cpfParam)     setCpf(formatCPF(cpfParam))
+    if (emailParam)   setEmail(emailParam)
   }, [searchParams])
 
   const validateStep = (step: number): boolean => {
@@ -66,26 +65,26 @@ export function PreCadastroForm() {
     let isValid = true
 
     if (step === 1) {
-      if (!cidade) { newErrors.cidade = true; isValid = false }
-      if (!bairro) { newErrors.bairro = true; isValid = false }
-      if (!plano) { newErrors.plano = true; isValid = false }
-      if (!vencimento) { newErrors.vencimento = true; isValid = false }
-      if (!aceitaTaxaInstalacao) { newErrors.aceitaTaxaInstalacao = true; isValid = false }
-    }
-
-    if (step === 2) {
-      if (nome.trim().length < 3) { newErrors.nome = true; isValid = false }
-      if (!validateCPF(cpf)) { newErrors.cpf = true; isValid = false }
-      if (!validateEmail(email)) { newErrors.email = true; isValid = false }
+      if (nome.trim().length < 3)  { newErrors.nome     = true; isValid = false }
+      if (!validateEmail(email))   { newErrors.email    = true; isValid = false }
       if (!validatePhone(whatsapp)) { newErrors.whatsapp = true; isValid = false }
     }
 
+    if (step === 2) {
+      if (!cidade)                          { newErrors.cidade               = true; isValid = false }
+      if (!bairro)                          { newErrors.bairro               = true; isValid = false }
+      if (!plano)                           { newErrors.plano                = true; isValid = false }
+      if (!vencimento)                      { newErrors.vencimento           = true; isValid = false }
+      if (!aceitaTaxaInstalacao)            { newErrors.aceitaTaxaInstalacao = true; isValid = false }
+      if (!validateCPF(cpf))               { newErrors.cpf                  = true; isValid = false }
+    }
+
     if (step === 3) {
-      if (!validateCEP(cep)) { newErrors.cep = true; isValid = false }
-      if (!logradouro.trim()) { newErrors.logradouro = true; isValid = false }
-      if (!numero.trim()) { newErrors.numero = true; isValid = false }
-      if (!cidadeEndereco.trim()) { newErrors.cidadeEndereco = true; isValid = false }
-      if (!estado.trim()) { newErrors.estado = true; isValid = false }
+      if (!validateCEP(cep))               { newErrors.cep            = true; isValid = false }
+      if (!logradouro.trim())              { newErrors.logradouro     = true; isValid = false }
+      if (!numero.trim())                  { newErrors.numero         = true; isValid = false }
+      if (!cidadeEndereco.trim())          { newErrors.cidadeEndereco = true; isValid = false }
+      if (!estado.trim())                  { newErrors.estado         = true; isValid = false }
       if (pontoReferencia.trim().length < 3) { newErrors.pontoReferencia = true; isValid = false }
     }
 
@@ -104,13 +103,22 @@ export function PreCadastroForm() {
     if (step > currentStep) {
       if (!validateStep(currentStep)) return
 
+      const ctx = getBrowserContext()
+
+      // Step 1 → banco: nome, email, whatsapp
       if (currentStep === 1) {
-        trackStep1Next({ cidade, bairro, plano, vencimento })
+        trackStep1Next({ cidade: "", bairro: "", plano: "", vencimento: "", sessionId })
         try {
-          const res = await fetch("/api/step1", {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/step1`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ session_id: sessionId, cidade, bairro, plano, vencimento, aceita_taxa_instalacao: aceitaTaxaInstalacao }),
+            body: JSON.stringify({
+              session_id: sessionId,
+              nome: nome.trim(),
+              email: email.trim(),
+              whatsapp: whatsapp.replace(/\D/g, ""),
+              ...ctx,
+            }),
           })
           const data = await res.json()
           if (data.lead_id) setLeadId(data.lead_id)
@@ -118,21 +126,32 @@ export function PreCadastroForm() {
           console.error("[STEP1 ERROR]")
         }
       }
+
+      // Step 2 → banco: cobertura, plano, cpf
       if (currentStep === 2) {
-        trackStep2Next()
+        trackStep2Next(leadId ?? 0)
         try {
-          const res = await fetch("/api/step2", {
+          await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/step2`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lead_id: leadId, nome: nome.trim(), cpf: cpf.replace(/\D/g, ""), email: email.trim(), whatsapp: whatsapp.replace(/\D/g, "") }),
+            body: JSON.stringify({
+              lead_id: leadId,
+              cpf: cpf.replace(/\D/g, ""),
+              cidade,
+              bairro,
+              plano,
+              vencimento,
+              aceita_taxa_instalacao: aceitaTaxaInstalacao,
+              session_id: sessionId,
+              ...ctx,
+            }),
           })
-          const data = await res.json()
-          if (data.lead_id) setLeadId(data.lead_id)
         } catch {
           console.error("[STEP2 ERROR]")
         }
       }
     }
+
     setCurrentStep(step)
     setErrors({})
     window.scrollTo({ top: 0, behavior: "smooth" })
@@ -140,7 +159,7 @@ export function PreCadastroForm() {
 
   const sendOtp = async () => {
     try {
-      await fetch("/api/otp", {
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
@@ -153,28 +172,30 @@ export function PreCadastroForm() {
   const handleSubmit = async () => {
     if (!validateStep(3)) return
     setIsSubmitting(true)
-    trackStep3Submit()
+    trackStep3Submit(leadId, sessionId)
 
+    const ctx = getBrowserContext()
     const token = searchParams.get("token") || ""
+
     const payload = {
       nome: nome.trim(),
       logradouro: `${logradouro.trim()}, ${numero.trim()}${complemento ? ` - ${complemento}` : ""}`,
-      bairro,
+      bairro: bairroCep || bairro,
       cidade: cidadeEndereco.trim(),
       uf: estado.trim(),
       cep: cep.replace(/\D/g, ""),
       pontoreferencia: pontoReferencia.trim(),
-      datanasc: "",
       cpfcnpj: cpf.replace(/\D/g, ""),
       observacao: `Plano: ${plano} | Vencimento: Dia ${vencimento} | Cidade cobertura: ${cidade}`,
       email: email.trim(),
       celular: whatsapp.replace(/\D/g, ""),
       ...(token && { token }),
       ...(leadId && { lead_id: String(leadId) }),
+      ...ctx,
     }
 
     try {
-      const response = await fetch("/api/submit", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -182,12 +203,18 @@ export function PreCadastroForm() {
       const result = await response.json()
 
       if (result.status === "success") {
-        trackLeadSuccess({ cidade, bairro, plano })
+        trackLeadSuccess({ cidade, bairro, plano, leadId, sessionId })
         await sendOtp()
         setFlowState("otp")
         window.scrollTo({ top: 0, behavior: "smooth" })
-      } else if (result.status === "erro cpf ja cadastrado") {
-        toast.error("CPF já cadastrado no sistema")
+      } else if (result.status === "erro cpf duplicado") {
+        toast.error("CPF já cadastrado. Entre em contato pelo WhatsApp para um novo ponto.", {
+          action: {
+            label: "WhatsApp",
+            onClick: () => window.open("https://wa.me/5521967797580", "_blank"),
+          },
+          duration: 8000,
+        })
       } else {
         throw new Error("status inesperado")
       }
@@ -227,7 +254,7 @@ export function PreCadastroForm() {
               </svg>
             </div>
             <h2 className="font-heading text-2xl font-extrabold text-foreground mb-2.5">
-              Pré-Cadastro Confirmado!
+              Cadastro Confirmado!
             </h2>
             <p className="text-[15px] text-muted-foreground max-w-[360px] leading-relaxed">
               Obrigado por escolher a KN Internet! Em breve nossa equipe entrará em contato pelo WhatsApp informado.
@@ -255,6 +282,19 @@ export function PreCadastroForm() {
       <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
         {currentStep === 1 && (
           <Step1
+            nome={nome}
+            setNome={setNome}
+            email={email}
+            setEmail={setEmail}
+            whatsapp={whatsapp}
+            setWhatsapp={setWhatsapp}
+            errors={errors}
+            onNext={() => goToStep(2)}
+          />
+        )}
+
+        {currentStep === 2 && (
+          <Step2
             cidade={cidade}
             setCidade={setCidade}
             bairro={bairro}
@@ -265,25 +305,8 @@ export function PreCadastroForm() {
             setVencimento={setVencimento}
             aceitaTaxaInstalacao={aceitaTaxaInstalacao}
             setAceitaTaxaInstalacao={setAceitaTaxaInstalacao}
-            errors={errors}
-            onNext={() => goToStep(2)}
-          />
-        )}
-
-        {currentStep === 2 && (
-          <Step2
-            nome={nome}
-            setNome={setNome}
             cpf={cpf}
             setCpf={setCpf}
-            email={email}
-            setEmail={setEmail}
-            whatsapp={whatsapp}
-            setWhatsapp={setWhatsapp}
-            telefoneFixo={telefoneFixo}
-            setTelefoneFixo={setTelefoneFixo}
-            telefoneResidencial={telefoneResidencial}
-            setTelefoneResidencial={setTelefoneResidencial}
             errors={errors}
             onNext={() => goToStep(3)}
             onBack={() => goToStep(1)}

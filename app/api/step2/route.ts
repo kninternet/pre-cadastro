@@ -15,34 +15,37 @@ export async function POST(request: Request) {
   }
 
   const {
-    lead_id, nome, cpf, email, whatsapp, telefone_fixo, telefone_residencial,
-    // Contexto do navegador
+    lead_id, cpf, cidade, bairro, plano, vencimento, aceita_taxa_instalacao,
     client_ip_address, client_user_agent, fbp, ga_client_id, session_id,
   } = body
 
-  if (!lead_id || !nome || !cpf || !email || !whatsapp) {
+  if (!lead_id || !cpf || !cidade || !bairro || !plano || !vencimento) {
     return NextResponse.json({ status: 'error', message: 'Campos obrigatórios ausentes' }, { status: 400 })
   }
+
+  const [plano_velocidade, plano_preco] = plano.split(' - ').map((s: string) => s.trim())
 
   // ── 1. Banco ────────────────────────────────────────────────────────────────
   try {
     await pool.query(
       `UPDATE leads SET
-        nome = $1,
-        cpf = $2,
-        email = $3,
-        whatsapp = $4,
-        telefone_fixo = $5,
-        telefone_residencial = $6,
+        cpf = $1,
+        cidade_cobertura = $2,
+        bairro_cobertura = $3,
+        plano_velocidade = $4,
+        plano_preco = $5,
+        vencimento = $6,
+        aceita_taxa_instalacao = $7,
         step_atual = 2
-      WHERE id = $7`,
+      WHERE id = $8`,
       [
-        nome,
         cpf.replace(/\D/g, ''),
-        email,
-        whatsapp.replace(/\D/g, ''),
-        telefone_fixo ?? null,
-        telefone_residencial ?? null,
+        cidade,
+        bairro,
+        plano_velocidade,
+        plano_preco ?? '',
+        vencimento,
+        aceita_taxa_instalacao === 'true' || aceita_taxa_instalacao === true,
         parseInt(lead_id),
       ]
     )
@@ -51,37 +54,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: 'error', message: 'Erro ao salvar Step 2' }, { status: 500 })
   }
 
-  // event_id único — mesmo ID deve ser enviado pelo pixel client-side no trackStep2Next()
   const eventId = `kn_step2_${lead_id}`
 
-  // Normaliza nome para primeiro e último
-  const nomeParts  = nome.trim().split(' ')
-  const firstName  = nomeParts[0]
-  const lastName   = nomeParts.length > 1 ? nomeParts[nomeParts.length - 1] : undefined
-
-  // ── 2. Meta CAPI — Lead ────────────────────────────────────────────────────
-  // Aqui temos email + telefone — maior match rate com a base Meta
+  // ── 2. Meta CAPI — InitiateCheckout ───────────────────────────────────────
   void sendCAPIEvent({
-    eventName: 'Lead',
+    eventName: 'InitiateCheckout',
     eventId,
     userData: {
-      email,
-      phone:           `55${whatsapp.replace(/\D/g, '')}`,   // DDI Brasil
-      firstName,
-      lastName,
-      country:         'br',
       clientIpAddress: client_ip_address,
       clientUserAgent: client_user_agent,
       fbp,
     },
+    customData: {
+      contentName: plano,
+      contentCategory: `${cidade} – ${bairro}`,
+    },
   })
 
-  // ── 3. GA4 Measurement Protocol — generate_lead ────────────────────────────
+  // ── 3. GA4 — begin_checkout ────────────────────────────────────────────────
   void sendGA4Event({
     clientId: ga_client_id ?? session_id ?? lead_id,
-    eventName: 'generate_lead',
+    eventName: 'begin_checkout',
     params: {
       lead_id: parseInt(lead_id),
+      kn_cidade: cidade,
+      kn_bairro: bairro,
+      kn_plano: plano,
     },
   })
 
