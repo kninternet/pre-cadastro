@@ -153,9 +153,11 @@ export function Step2({
 
                 <button
                   onClick={() => {
-                    setShowDuplicateModal(false)
-                    setCpf("")
-                    setCpfStatus("idle")
+                    if (cpfStatus === "duplicate") {
+                      setShowDuplicateModal(true)
+                      return
+                    }
+                    onNext()
                   }}
                   className="w-full h-[48px] rounded-xl font-heading text-[15px] font-bold transition-all"
                   style={{
