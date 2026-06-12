@@ -45,8 +45,7 @@ export async function POST(request: Request) {
         plano_velocidade,
         plano_preco ?? '',
         vencimento,
-        aceita_taxa_instalacao === 'true' || aceita_taxa_instalacao === true,
-        parseInt(lead_id),
+        aceita_taxa_instalacao === 'true', parseInt(lead_id),
       ]
     )
   } catch (err) {
