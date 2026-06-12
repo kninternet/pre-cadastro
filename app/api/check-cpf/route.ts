@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server'
+import { exec } from 'child_process'
+import { promisify } from 'util'
 
-function fetchWithTimeout(url: string, options: RequestInit, ms = 6000): Promise<Response> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), ms)
-  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timeout))
-}
+const execAsync = promisify(exec)
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -18,21 +16,13 @@ export async function GET(request: Request) {
   const token = process.env.SGP_TOKEN ?? ''
   const base  = process.env.SGP_BASE_URL ?? 'https://netecom.sgplocal.com.br'
 
-  // SGP GET não aceita body — app e token vão como form params via POST
-  // A documentação usa GET com body (form), mas fetch não permite body em GET
-  // Solução: usar POST na rota de consulta por CPF
   try {
-    const sgpRes = await fetchWithTimeout(
-      `${base}/api/crm/cliente/contratos/?cpfcnpj=${cpf}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ app, token }).toString(),
-      },
-      6000
+    const { stdout } = await execAsync(
+      `curl -s -X GET '${base}/api/crm/cliente/contratos/?cpfcnpj=${cpf}' --form 'app="${app}"' --form 'token="${token}"'`,
+      { timeout: 6000 }
     )
 
-    const data = await sgpRes.json() as Record<string, unknown>
+    const data = JSON.parse(stdout) as Record<string, unknown>
     console.log('[CHECK-CPF RESPONSE]', JSON.stringify(data))
 
     if (data.errors) {
