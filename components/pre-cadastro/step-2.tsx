@@ -123,7 +123,7 @@ export function Step2({
                   style={{ background: "var(--primary)", boxShadow: "0 4px 16px rgba(249,115,22,0.28)" }}
                   onClick={() => setShowDuplicateModal(false)}
                 >
-                  ✉️ Falar com Atendimento
+                  ✉️ atendimento@kninternet.com.br
                 </a>
 
                 <a
