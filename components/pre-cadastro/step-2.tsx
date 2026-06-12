@@ -90,9 +90,27 @@ export function Step2({
   }
 
   const handleCpfChange = (value: string) => {
-    setCpf(formatCPF(value))
-    if (cpfStatus !== "idle") setCpfStatus("idle")
+    const formatted = formatCPF(value)
+    setCpf(formatted)
     setShowDuplicateModal(false)
+
+    const digits = formatted.replace(/\D/g, "")
+    if (digits.length === 11 && validateCPF(formatted)) {
+      setCpfStatus("checking")
+      fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/check-cpf?cpf=${digits}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.found) {
+            setCpfStatus("duplicate")
+            setShowDuplicateModal(true)
+          } else {
+            setCpfStatus("free")
+          }
+        })
+        .catch(() => setCpfStatus("idle"))
+    } else {
+      if (cpfStatus !== "idle") setCpfStatus("idle")
+    }
   }
 
   return (
@@ -325,7 +343,6 @@ export function Step2({
                     type="text"
                     value={cpf}
                     onChange={(e) => handleCpfChange(e.target.value)}
-                    onBlur={handleCpfBlur}
                     placeholder="000.000.000-00"
                     maxLength={14}
                     className={cn(
