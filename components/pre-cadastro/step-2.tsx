@@ -66,29 +66,6 @@ export function Step2({
     setPlano("")
   }
 
-  const handleCpfBlur = async () => {
-    const cpfLimpo = cpf.replace(/\D/g, "")
-    if (!validateCPF(cpf)) return
-
-    setCpfStatus("checking")
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/check-cpf?cpf=${cpfLimpo}`
-      )
-      const data = await res.json()
-
-      if (data.found) {
-        setCpfStatus("duplicate")
-        setShowDuplicateModal(true)
-      } else {
-        setCpfStatus("free")
-      }
-    } catch {
-      // Em caso de erro de rede, deixa seguir — o backend trata no submit
-      setCpfStatus("idle")
-    }
-  }
-
   const handleCpfChange = (value: string) => {
     const formatted = formatCPF(value)
     setCpf(formatted)
@@ -153,11 +130,9 @@ export function Step2({
 
                 <button
                   onClick={() => {
-                    if (cpfStatus === "duplicate") {
-                      setShowDuplicateModal(true)
-                      return
-                    }
-                    onNext()
+                    setShowDuplicateModal(false)
+                    setCpf("")
+                    setCpfStatus("idle")
                   }}
                   className="w-full h-[48px] rounded-xl font-heading text-[15px] font-bold transition-all"
                   style={{
@@ -398,7 +373,13 @@ export function Step2({
             Voltar
           </button>
           <button
-            onClick={onNext}
+            onClick={() => {
+              if (cpfStatus === "duplicate") {
+                setShowDuplicateModal(true)
+                return
+              }
+              onNext()
+            }}
             className="flex-1 h-[54px] bg-primary text-white border-none rounded-xl font-heading text-[17px] font-bold cursor-pointer flex items-center justify-center gap-2.5 shadow-[0_4px_16px_rgba(249,115,22,0.28)] transition-all hover:bg-[#ea6c0a] hover:-translate-y-0.5 hover:shadow-[0_6px_24px_rgba(249,115,22,0.4)] active:translate-y-0"
           >
             Continuar — Endereço
