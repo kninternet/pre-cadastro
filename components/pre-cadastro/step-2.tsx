@@ -123,7 +123,7 @@ export function Step2({
                   style={{ background: "var(--primary)", boxShadow: "0 4px 16px rgba(249,115,22,0.28)" }}
                   onClick={() => setShowDuplicateModal(false)}
                 >
-                  ✉️ atendimento@kninternet.com.br
+                  atendimento@kninternet.com.br
                 </a>
 
                 <a
@@ -134,7 +134,7 @@ export function Step2({
                   style={{ background: "#25D366", boxShadow: "0 4px 16px rgba(37,211,102,0.28)" }}
                   onClick={() => setShowDuplicateModal(false)}
                 >
-                  💬 WhatsApp
+                  WhatsApp
                 </a>
 
                 <button
