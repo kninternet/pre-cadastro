@@ -1,7 +1,6 @@
 "use client"
 
-import { CheckCircle2, ArrowLeft, Send, Loader2, Edit2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { CheckCircle2, ArrowLeft, Send, Loader2, Edit2, Check } from "lucide-react"
 
 interface ReviewStepProps {
   // Step 1
@@ -14,6 +13,7 @@ interface ReviewStepProps {
   plano: string
   vencimento: string
   cpf: string
+  aceitaTaxaInstalacao: boolean
   // Step 3
   logradouro: string
   numero: string
@@ -72,7 +72,7 @@ function Section({
 
 export function ReviewStep({
   nome, email, whatsapp,
-  cidade, bairro, plano, vencimento, cpf,
+  cidade, bairro, plano, vencimento, cpf, aceitaTaxaInstalacao,
   logradouro, numero, complemento, bairroCep, cidadeEndereco, estado, cep, pontoReferencia,
   onConfirm, onBack, onEditStep, isSubmitting,
 }: ReviewStepProps) {
@@ -115,6 +115,15 @@ export function ReviewStep({
           <Row label="Bairro" value={bairro} />
           <Row label="Plano" value={plano} />
           <Row label="Vencimento" value={`Todo dia ${vencimento}`} />
+          {aceitaTaxaInstalacao && (
+            <div className="flex justify-between items-center py-2.5">
+              <span className="text-[13px] text-muted-foreground">Taxa de instalação</span>
+              <span className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
+                <Check className="w-3.5 h-3.5 text-green-500" />
+                R$ 150,00 via Pix
+              </span>
+            </div>
+          )}
         </Section>
 
         {/* Endereço */}
