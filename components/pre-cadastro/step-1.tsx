@@ -3,7 +3,6 @@
 import { User, ArrowRight } from "lucide-react"
 import { CardHeader } from "./card-header"
 import { SectionTitle } from "./section-title"
-import { formatPhone } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
 
 interface Step1Props {
@@ -15,6 +14,14 @@ interface Step1Props {
   setWhatsapp: (value: string) => void
   errors: Record<string, boolean>
   onNext: () => void
+}
+
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 11)
+  if (digits.length <= 2) return digits
+  if (digits.length <= 6) return `(${digits.slice(0,2)}) ${digits.slice(2)}`
+  if (digits.length <= 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`
+  return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`
 }
 
 export function Step1({
@@ -31,6 +38,14 @@ export function Step1({
       "hover:border-muted-foreground focus:border-primary focus:bg-card focus:shadow-[0_0_0_3px_rgba(249,115,22,0.12)]",
       hasError && "border-destructive"
     )
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") onNext()
+  }
+
+  const handleWhatsappChange = (value: string) => {
+    setWhatsapp(formatPhone(value))
+  }
 
   return (
     <div>
@@ -55,6 +70,7 @@ export function Step1({
                 type="text"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="Digite seu nome completo"
                 autoComplete="name"
                 className={inputClass(errors.nome)}
@@ -75,12 +91,13 @@ export function Step1({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="seu@email.com"
                 autoComplete="email"
                 className={inputClass(errors.email)}
               />
               {errors.email && (
-                <span className="text-xs font-medium text-destructive">E-mail inválido</span>
+                <span className="text-xs font-medium text-destructive">Coloque um email válido</span>
               )}
             </div>
 
@@ -92,10 +109,12 @@ export function Step1({
               <input
                 type="tel"
                 value={whatsapp}
-                onChange={(e) => setWhatsapp(formatPhone(e.target.value))}
+                onChange={(e) => handleWhatsappChange(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="(21) 99999-9999"
                 autoComplete="tel"
                 maxLength={15}
+                inputMode="numeric"
                 className={inputClass(errors.whatsapp)}
               />
               {errors.whatsapp && (

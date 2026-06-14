@@ -77,7 +77,7 @@ export function ReviewStep({
   onConfirm, onBack, onEditStep, isSubmitting,
 }: ReviewStepProps) {
   const enderecoCompleto = [logradouro, numero, complemento].filter(Boolean).join(", ")
-  const cpfFormatado = cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
+  const cpfFormatado = cpf.length === 11 ? `${cpf.slice(0,3)}.***.***-${cpf.slice(9)}` : cpf
   const whatsappFormatado = whatsapp.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
   const cepFormatado = cep.replace(/(\d{5})(\d{3})/, "$1-$2")
 

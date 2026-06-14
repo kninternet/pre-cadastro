@@ -269,7 +269,7 @@ export async function POST(request: Request) {
   // ── 6. E-mail atendimento ──────────────────────────────────────────────────
   try {
     await mailer.sendMail({
-      from: `"KN Internet" <${process.env.SMTP_USER}>`,
+      from: `"KN Internet - Base" <${process.env.SMTP_USER}>`,
       to: process.env.SMTP_USER,
       subject: `${isCpfDup ? '⚠️ CPF DUPLICADO — ' : ''}Novo cadastro — ${nome}`,
       html: `

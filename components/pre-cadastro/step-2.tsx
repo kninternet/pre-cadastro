@@ -122,6 +122,7 @@ export function Step2({
                   onClick={() => {
                     setShowDuplicateModal(false)
                     setCpfDuplicado(true)
+                    onNext()
                   }}
                   className="w-full h-[48px] rounded-xl font-heading text-[15px] font-bold text-white flex items-center justify-center gap-2 transition-all"
                   style={{ background: "var(--primary)", boxShadow: "0 4px 16px rgba(249,115,22,0.28)" }}
