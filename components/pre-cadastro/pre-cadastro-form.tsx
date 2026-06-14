@@ -384,7 +384,7 @@ export function PreCadastroForm() {
             estado={estado} setEstado={setEstado}
             pontoReferencia={pontoReferencia} setPontoReferencia={setPontoReferencia}
             errors={errors}
-            onSubmit={goToReview}
+            onSubmit={async () => goToReview()}
             onBack={backFromStep3}
             onGoToStep1={() => goToStep(1)}
             isSubmitting={isSubmitting}
