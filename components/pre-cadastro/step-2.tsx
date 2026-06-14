@@ -8,8 +8,6 @@ import { DATA, Plan } from "@/lib/data"
 import { formatCPF, validateCPF } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
 
-const WA_ATENDIMENTO = "https://wa.me/5521967797580"
-
 interface Step2Props {
   cidade: string
   setCidade: (value: string) => void
@@ -23,6 +21,8 @@ interface Step2Props {
   setAceitaTaxaInstalacao: (value: boolean) => void
   cpf: string
   setCpf: (value: string) => void
+  cpfDuplicado: boolean
+  setCpfDuplicado: (value: boolean) => void
   errors: Record<string, boolean>
   onNext: () => void
   onBack: () => void
@@ -35,6 +35,7 @@ export function Step2({
   vencimento, setVencimento,
   aceitaTaxaInstalacao, setAceitaTaxaInstalacao,
   cpf, setCpf,
+  cpfDuplicado, setCpfDuplicado,
   errors,
   onNext, onBack,
 }: Step2Props) {
@@ -70,6 +71,7 @@ export function Step2({
     const formatted = formatCPF(value)
     setCpf(formatted)
     setShowDuplicateModal(false)
+    setCpfDuplicado(false)
 
     const digits = formatted.replace(/\D/g, "")
     if (digits.length === 11 && validateCPF(formatted)) {
@@ -117,31 +119,23 @@ export function Step2({
               </div>
 
               <div className="w-full flex flex-col gap-2.5">
-                <a
-                  href={`mailto:atendimento@kninternet.com.br?subject=${encodeURIComponent("Novo ponto de instalação")}&body=${encodeURIComponent("Olá! Já sou cliente KN Internet e gostaria de um novo ponto de instalação.")}`}
+                <button
+                  onClick={() => {
+                    setShowDuplicateModal(false)
+                    setCpfDuplicado(true)
+                  }}
                   className="w-full h-[48px] rounded-xl font-heading text-[15px] font-bold text-white flex items-center justify-center gap-2 transition-all"
                   style={{ background: "var(--primary)", boxShadow: "0 4px 16px rgba(249,115,22,0.28)" }}
-                  onClick={() => setShowDuplicateModal(false)}
                 >
-                  atendimento@kninternet.com.br
-                </a>
-
-                <a
-                  href={`${WA_ATENDIMENTO}?text=${encodeURIComponent("Olá! Já sou cliente KN Internet e gostaria de um novo ponto de instalação.")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full h-[48px] rounded-xl font-heading text-[15px] font-bold text-white flex items-center justify-center gap-2 transition-all"
-                  style={{ background: "#25D366", boxShadow: "0 4px 16px rgba(37,211,102,0.28)" }}
-                  onClick={() => setShowDuplicateModal(false)}
-                >
-                  WhatsApp
-                </a>
+                  Continuar
+                </button>
 
                 <button
                   onClick={() => {
                     setShowDuplicateModal(false)
                     setCpf("")
                     setCpfStatus("idle")
+                    setCpfDuplicado(false)
                   }}
                   className="w-full h-[48px] rounded-xl font-heading text-[15px] font-bold transition-all"
                   style={{
@@ -150,7 +144,7 @@ export function Step2({
                     color: "var(--foreground)",
                   }}
                 >
-                  Corrigir CPF
+                  Alterar CPF
                 </button>
               </div>
             </div>
@@ -337,7 +331,8 @@ export function Step2({
                       "hover:border-muted-foreground focus:border-primary focus:bg-card focus:shadow-[0_0_0_3px_rgba(249,115,22,0.12)]",
                       errors.cpf && "border-destructive",
                       cpfStatus === "free" && "border-green-500",
-                      cpfStatus === "duplicate" && "border-orange-400",
+                      cpfStatus === "duplicate" && !cpfDuplicado && "border-orange-400",
+                      cpfDuplicado && "border-yellow-400",
                     )}
                   />
                   {cpfStatus === "checking" && (
@@ -350,12 +345,17 @@ export function Step2({
                 {errors.cpf && (
                   <span className="text-xs font-medium text-destructive">CPF inválido</span>
                 )}
-                {cpfStatus === "duplicate" && !showDuplicateModal && (
+                {cpfStatus === "duplicate" && !showDuplicateModal && !cpfDuplicado && (
                   <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>
                     CPF já cadastrado —{" "}
                     <button onClick={() => setShowDuplicateModal(true)} className="underline cursor-pointer">
                       ver opções
                     </button>
+                  </span>
+                )}
+                {cpfDuplicado && (
+                  <span className="text-xs font-medium text-yellow-600">
+                    CPF duplicado — lead será encaminhado ao atendimento
                   </span>
                 )}
               </div>
@@ -383,7 +383,7 @@ export function Step2({
           </button>
           <button
             onClick={() => {
-              if (cpfStatus === "duplicate") {
+              if (cpfStatus === "duplicate" && !cpfDuplicado) {
                 setShowDuplicateModal(true)
                 return
               }

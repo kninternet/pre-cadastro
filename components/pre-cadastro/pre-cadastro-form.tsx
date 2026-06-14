@@ -10,8 +10,7 @@ import { Step3 } from "./step-3"
 import { OtpVerification } from "./otp-verification"
 import { WelcomeModal } from "./welcome-modal"
 import { formatCPF, formatPhone, validateEmail, validateCPF, validatePhone, validateCEP } from "@/lib/formatters"
-import { trackStep1View, trackStep1Next, trackStep2Next, trackStep3Submit, trackLeadSuccess, trackLeadError } from "@/lib/analytics"
-import { getBrowserContext } from "@/lib/analytics"
+import { trackStep1View, trackStep1Next, trackStep2Next, trackStep3Submit, trackLeadSuccess, trackLeadError, getBrowserContext } from "@/lib/analytics"
 
 type FlowState = "form" | "otp" | "done"
 
@@ -36,6 +35,7 @@ export function PreCadastroForm() {
   const [vencimento, setVencimento] = useState("")
   const [aceitaTaxaInstalacao, setAceitaTaxaInstalacao] = useState(false)
   const [cpf, setCpf] = useState("")
+  const [cpfDuplicado, setCpfDuplicado] = useState(false)
 
   // ── Step 3 — Endereço ──────────────────────────────────────────────────────
   const [cep, setCep] = useState("")
@@ -49,15 +49,15 @@ export function PreCadastroForm() {
 
   useEffect(() => {
     trackStep1View()
-    const nomeParam    = searchParams.get("nome")
+    const nomeParam     = searchParams.get("nome")
     const whatsappParam = searchParams.get("whatsapp") || searchParams.get("numero_whatsapp")
-    const cpfParam     = searchParams.get("cpf")
-    const emailParam   = searchParams.get("email")
+    const cpfParam      = searchParams.get("cpf")
+    const emailParam    = searchParams.get("email")
 
-    if (nomeParam)    setNome(nomeParam)
+    if (nomeParam)     setNome(nomeParam)
     if (whatsappParam) setWhatsapp(formatPhone(whatsappParam))
-    if (cpfParam)     setCpf(formatCPF(cpfParam))
-    if (emailParam)   setEmail(emailParam)
+    if (cpfParam)      setCpf(formatCPF(cpfParam))
+    if (emailParam)    setEmail(emailParam)
   }, [searchParams])
 
   const validateStep = (step: number): boolean => {
@@ -65,26 +65,26 @@ export function PreCadastroForm() {
     let isValid = true
 
     if (step === 1) {
-      if (nome.trim().length < 3)  { newErrors.nome     = true; isValid = false }
-      if (!validateEmail(email))   { newErrors.email    = true; isValid = false }
+      if (nome.trim().length < 3)   { newErrors.nome     = true; isValid = false }
+      if (!validateEmail(email))    { newErrors.email    = true; isValid = false }
       if (!validatePhone(whatsapp)) { newErrors.whatsapp = true; isValid = false }
     }
 
     if (step === 2) {
-      if (!cidade)                          { newErrors.cidade               = true; isValid = false }
-      if (!bairro)                          { newErrors.bairro               = true; isValid = false }
-      if (!plano)                           { newErrors.plano                = true; isValid = false }
-      if (!vencimento)                      { newErrors.vencimento           = true; isValid = false }
-      if (!aceitaTaxaInstalacao)            { newErrors.aceitaTaxaInstalacao = true; isValid = false }
-      if (!validateCPF(cpf))               { newErrors.cpf                  = true; isValid = false }
+      if (!cidade)               { newErrors.cidade               = true; isValid = false }
+      if (!bairro)               { newErrors.bairro               = true; isValid = false }
+      if (!plano)                { newErrors.plano                = true; isValid = false }
+      if (!vencimento)           { newErrors.vencimento           = true; isValid = false }
+      if (!aceitaTaxaInstalacao) { newErrors.aceitaTaxaInstalacao = true; isValid = false }
+      if (!validateCPF(cpf))    { newErrors.cpf                  = true; isValid = false }
     }
 
     if (step === 3) {
-      if (!validateCEP(cep))               { newErrors.cep            = true; isValid = false }
-      if (!logradouro.trim())              { newErrors.logradouro     = true; isValid = false }
-      if (!numero.trim())                  { newErrors.numero         = true; isValid = false }
-      if (!cidadeEndereco.trim())          { newErrors.cidadeEndereco = true; isValid = false }
-      if (!estado.trim())                  { newErrors.estado         = true; isValid = false }
+      if (!validateCEP(cep))                 { newErrors.cep             = true; isValid = false }
+      if (!logradouro.trim())                { newErrors.logradouro      = true; isValid = false }
+      if (!numero.trim())                    { newErrors.numero          = true; isValid = false }
+      if (!cidadeEndereco.trim())            { newErrors.cidadeEndereco  = true; isValid = false }
+      if (!estado.trim())                    { newErrors.estado          = true; isValid = false }
       if (pontoReferencia.trim().length < 3) { newErrors.pontoReferencia = true; isValid = false }
     }
 
@@ -186,6 +186,7 @@ export function PreCadastroForm() {
       cep: cep.replace(/\D/g, ""),
       pontoreferencia: pontoReferencia.trim(),
       cpfcnpj: cpf.replace(/\D/g, ""),
+      cpf_duplicado: cpfDuplicado,
       observacao: `Plano: ${plano} | Vencimento: Dia ${vencimento} | Cidade cobertura: ${cidade}`,
       email: email.trim(),
       celular: whatsapp.replace(/\D/g, ""),
@@ -207,14 +208,6 @@ export function PreCadastroForm() {
         await sendOtp()
         setFlowState("otp")
         window.scrollTo({ top: 0, behavior: "smooth" })
-      } else if (result.status === "erro cpf duplicado") {
-        toast.error("CPF já cadastrado. Entre em contato pelo WhatsApp para um novo ponto.", {
-          action: {
-            label: "WhatsApp",
-            onClick: () => window.open("https://wa.me/5521967797580", "_blank"),
-          },
-          duration: 8000,
-        })
       } else {
         throw new Error("status inesperado")
       }
@@ -307,6 +300,8 @@ export function PreCadastroForm() {
             setAceitaTaxaInstalacao={setAceitaTaxaInstalacao}
             cpf={cpf}
             setCpf={setCpf}
+            cpfDuplicado={cpfDuplicado}
+            setCpfDuplicado={setCpfDuplicado}
             errors={errors}
             onNext={() => goToStep(3)}
             onBack={() => goToStep(1)}
