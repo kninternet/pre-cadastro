@@ -26,12 +26,18 @@ function fetchWithTimeout(url: string, options: RequestInit, ms = 8000): Promise
   return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timeout))
 }
 
+function sanitizarNumero(valor: string): string {
+  // Extrai apenas a parte numérica inicial: "203 casa B" → "203", "S/N" → "S/N"
+  const match = valor.trim().match(/^(\d+[\w/-]*)/)
+  return match ? match[1] : (valor.trim() || 'S/N')
+}
+
 function parseLogradouro(logradouro: string) {
   const match = logradouro.match(/^(.+?),\s*(\S+)(?:\s*-\s*(.+))?$/)
   if (match) {
     return {
       logradouro: match[1].trim(),
-      numero: match[2].trim(),
+      numero: sanitizarNumero(match[2]),
       complemento: match[3]?.trim() ?? null,
     }
   }
@@ -39,7 +45,7 @@ function parseLogradouro(logradouro: string) {
   if (matchSemVirgula) {
     return {
       logradouro: matchSemVirgula[1].trim(),
-      numero: matchSemVirgula[2].trim(),
+      numero: sanitizarNumero(matchSemVirgula[2]),
       complemento: null,
     }
   }

@@ -7,12 +7,13 @@ import { ProgressBar } from "./progress-bar"
 import { Step1 } from "./step-1"
 import { Step2 } from "./step-2"
 import { Step3 } from "./step-3"
+import { ReviewStep } from "./review-step"
 import { OtpVerification } from "./otp-verification"
 import { WelcomeModal } from "./welcome-modal"
 import { formatCPF, formatPhone, validateEmail, validateCPF, validatePhone, validateCEP } from "@/lib/formatters"
 import { trackStep1View, trackStep1Next, trackStep2Next, trackStep3Submit, trackLeadSuccess, trackLeadError, getBrowserContext } from "@/lib/analytics"
 
-type FlowState = "form" | "otp" | "done"
+type FlowState = "form" | "review" | "otp" | "done"
 
 export function PreCadastroForm() {
   const searchParams = useSearchParams()
@@ -105,7 +106,6 @@ export function PreCadastroForm() {
 
       const ctx = getBrowserContext()
 
-      // Step 1 → banco: nome, email, whatsapp
       if (currentStep === 1) {
         trackStep1Next({ cidade: "", bairro: "", plano: "", vencimento: "", sessionId })
         try {
@@ -127,7 +127,6 @@ export function PreCadastroForm() {
         }
       }
 
-      // Step 2 → banco: cobertura, plano, cpf
       if (currentStep === 2) {
         trackStep2Next(leadId ?? 0)
         try {
@@ -137,10 +136,7 @@ export function PreCadastroForm() {
             body: JSON.stringify({
               lead_id: leadId,
               cpf: cpf.replace(/\D/g, ""),
-              cidade,
-              bairro,
-              plano,
-              vencimento,
+              cidade, bairro, plano, vencimento,
               aceita_taxa_instalacao: aceitaTaxaInstalacao,
               session_id: sessionId,
               ...ctx,
@@ -157,6 +153,12 @@ export function PreCadastroForm() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+  const goToReview = () => {
+    if (!validateStep(3)) return
+    setFlowState("review")
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
   const sendOtp = async () => {
     try {
       await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/otp`, {
@@ -170,7 +172,6 @@ export function PreCadastroForm() {
   }
 
   const handleSubmit = async () => {
-    if (!validateStep(3)) return
     setIsSubmitting(true)
     trackStep3Submit(leadId, sessionId)
 
@@ -217,6 +218,39 @@ export function PreCadastroForm() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (flowState === "review") {
+    return (
+      <>
+        <WelcomeModal />
+        <ProgressBar currentStep={4} />
+        <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
+          <ReviewStep
+            nome={nome}
+            email={email}
+            whatsapp={whatsapp.replace(/\D/g, "")}
+            cidade={cidade}
+            bairro={bairro}
+            plano={plano}
+            vencimento={vencimento}
+            cpf={cpf.replace(/\D/g, "")}
+            logradouro={logradouro}
+            numero={numero}
+            complemento={complemento}
+            bairroCep={bairroCep}
+            cidadeEndereco={cidadeEndereco}
+            estado={estado}
+            cep={cep.replace(/\D/g, "")}
+            pontoReferencia={pontoReferencia}
+            onConfirm={handleSubmit}
+            onBack={() => { setFlowState("form"); window.scrollTo({ top: 0, behavior: "smooth" }) }}
+            onEditStep={(step) => { setFlowState("form"); setCurrentStep(step); window.scrollTo({ top: 0, behavior: "smooth" }) }}
+            isSubmitting={isSubmitting}
+          />
+        </div>
+      </>
+    )
   }
 
   if (flowState === "otp") {
@@ -275,12 +309,9 @@ export function PreCadastroForm() {
       <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
         {currentStep === 1 && (
           <Step1
-            nome={nome}
-            setNome={setNome}
-            email={email}
-            setEmail={setEmail}
-            whatsapp={whatsapp}
-            setWhatsapp={setWhatsapp}
+            nome={nome} setNome={setNome}
+            email={email} setEmail={setEmail}
+            whatsapp={whatsapp} setWhatsapp={setWhatsapp}
             errors={errors}
             onNext={() => goToStep(2)}
           />
@@ -288,20 +319,13 @@ export function PreCadastroForm() {
 
         {currentStep === 2 && (
           <Step2
-            cidade={cidade}
-            setCidade={setCidade}
-            bairro={bairro}
-            setBairro={setBairro}
-            plano={plano}
-            setPlano={setPlano}
-            vencimento={vencimento}
-            setVencimento={setVencimento}
-            aceitaTaxaInstalacao={aceitaTaxaInstalacao}
-            setAceitaTaxaInstalacao={setAceitaTaxaInstalacao}
-            cpf={cpf}
-            setCpf={setCpf}
-            cpfDuplicado={cpfDuplicado}
-            setCpfDuplicado={setCpfDuplicado}
+            cidade={cidade} setCidade={setCidade}
+            bairro={bairro} setBairro={setBairro}
+            plano={plano} setPlano={setPlano}
+            vencimento={vencimento} setVencimento={setVencimento}
+            aceitaTaxaInstalacao={aceitaTaxaInstalacao} setAceitaTaxaInstalacao={setAceitaTaxaInstalacao}
+            cpf={cpf} setCpf={setCpf}
+            cpfDuplicado={cpfDuplicado} setCpfDuplicado={setCpfDuplicado}
             errors={errors}
             onNext={() => goToStep(3)}
             onBack={() => goToStep(1)}
@@ -311,24 +335,16 @@ export function PreCadastroForm() {
         {currentStep === 3 && (
           <Step3
             cidade={cidade}
-            cep={cep}
-            setCep={setCep}
-            logradouro={logradouro}
-            setLogradouro={setLogradouro}
-            numero={numero}
-            setNumero={setNumero}
-            complemento={complemento}
-            setComplemento={setComplemento}
-            bairroCep={bairroCep}
-            setBairroCep={setBairroCep}
-            cidadeEndereco={cidadeEndereco}
-            setCidadeEndereco={setCidadeEndereco}
-            estado={estado}
-            setEstado={setEstado}
-            pontoReferencia={pontoReferencia}
-            setPontoReferencia={setPontoReferencia}
+            cep={cep} setCep={setCep}
+            logradouro={logradouro} setLogradouro={setLogradouro}
+            numero={numero} setNumero={setNumero}
+            complemento={complemento} setComplemento={setComplemento}
+            bairroCep={bairroCep} setBairroCep={setBairroCep}
+            cidadeEndereco={cidadeEndereco} setCidadeEndereco={setCidadeEndereco}
+            estado={estado} setEstado={setEstado}
+            pontoReferencia={pontoReferencia} setPontoReferencia={setPontoReferencia}
             errors={errors}
-            onSubmit={handleSubmit}
+            onSubmit={goToReview}
             onBack={() => goToStep(2)}
             onGoToStep1={() => goToStep(1)}
             isSubmitting={isSubmitting}
