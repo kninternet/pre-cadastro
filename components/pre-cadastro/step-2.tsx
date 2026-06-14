@@ -345,17 +345,12 @@ export function Step2({
                 {errors.cpf && (
                   <span className="text-xs font-medium text-destructive">CPF inválido</span>
                 )}
-                {cpfStatus === "duplicate" && !showDuplicateModal && !cpfDuplicado && (
+                {cpfStatus === "duplicate" && !showDuplicateModal && (
                   <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>
-                    CPF já cadastrado —{" "}
+                    CPF já cadastrado em nossa base!{" "}
                     <button onClick={() => setShowDuplicateModal(true)} className="underline cursor-pointer">
-                      ver opções
+                      Prosseguir ou Alterar
                     </button>
-                  </span>
-                )}
-                {cpfDuplicado && (
-                  <span className="text-xs font-medium text-yellow-600">
-                    CPF duplicado — lead será encaminhado ao atendimento
                   </span>
                 )}
               </div>
