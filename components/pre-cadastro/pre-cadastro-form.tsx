@@ -161,7 +161,6 @@ export function PreCadastroForm() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  // Quando editando de dentro da revisão — "Continuar" volta para review
   const handleStepNext = async (nextStep: number) => {
     if (editandoDeReview) {
       if (!validateStep(currentStep)) return
@@ -179,6 +178,24 @@ export function PreCadastroForm() {
     setCurrentStep(step)
     setErrors({})
     window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  const backFromStep2 = () => {
+    if (editandoDeReview) {
+      setFlowState("review")
+      setEditandoDeReview(false)
+    } else {
+      goToStep(1)
+    }
+  }
+
+  const backFromStep3 = () => {
+    if (editandoDeReview) {
+      setFlowState("review")
+      setEditandoDeReview(false)
+    } else {
+      goToStep(2)
+    }
   }
 
   const sendOtp = async () => {
@@ -351,7 +368,7 @@ export function PreCadastroForm() {
             cpfDuplicado={cpfDuplicado} setCpfDuplicado={setCpfDuplicado}
             errors={errors}
             onNext={() => handleStepNext(3)}
-            onBack={() => editandoDeReview ? (setFlowState("review"), setEditandoDeReview(false)) : goToStep(1)}
+            onBack={backFromStep2}
           />
         )}
 
@@ -368,7 +385,7 @@ export function PreCadastroForm() {
             pontoReferencia={pontoReferencia} setPontoReferencia={setPontoReferencia}
             errors={errors}
             onSubmit={goToReview}
-            onBack={() => editandoDeReview ? (setFlowState("review"), setEditandoDeReview(false)) : goToStep(2)}
+            onBack={backFromStep3}
             onGoToStep1={() => goToStep(1)}
             isSubmitting={isSubmitting}
           />
