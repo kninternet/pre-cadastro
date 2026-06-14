@@ -114,8 +114,7 @@ export function Step2({
                   CPF já cadastrado
                 </h3>
                 <p className="text-[14px] leading-relaxed" style={{ color: "var(--muted-foreground)" }}>
-                  Identificamos que este CPF já possui um cadastro na KN Internet. Como quer continuar?
-                </p>
+                  Identificamos que este CPF já possui um cadastro na KN Internet.</p>
               </div>
 
               <div className="w-full flex flex-col gap-2.5">
@@ -344,14 +343,6 @@ export function Step2({
                 </div>
                 {errors.cpf && (
                   <span className="text-xs font-medium text-destructive">CPF inválido</span>
-                )}
-                {cpfStatus === "duplicate" && !showDuplicateModal && (
-                  <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>
-                    CPF já cadastrado em nossa base!{" "}
-                    <button onClick={() => setShowDuplicateModal(true)} className="underline cursor-pointer">
-                      Prosseguir ou Alterar
-                    </button>
-                  </span>
                 )}
               </div>
             </div>
