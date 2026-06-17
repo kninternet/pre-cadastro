@@ -45,7 +45,7 @@ export const DATA: Record<string, CityData> = {
     }
   },
   "Duque de Caxias": {
-    vencimentos: ["5"],
+    vencimentos: ["5", "20"],
     bairros: {
       "Cangulo": [
         { v: "400MB", p: "R$ 120,00" },
@@ -65,7 +65,7 @@ export const DATA: Record<string, CityData> = {
     }
   },
   "Rio de Janeiro": {
-    vencimentos: ["5", "10"],
+    vencimentos: ["5", "20"],
     bairros: {
       "Vila Santa Clara (Taquara)": [
         { v: "100MB", p: "R$ 79,90" },
@@ -92,8 +92,8 @@ export const DATA: Record<string, CityData> = {
       ],
     }
   },
-    "Queimados": {
-    vencimentos: ["5"],
+  "Queimados": {
+    vencimentos: ["5", "20"],
     bairros: {
       "Queimados": [
         { v: "300MB", p: "R$ 100,00" },
@@ -103,4 +103,23 @@ export const DATA: Record<string, CityData> = {
       ],
     }
   }
+}
+
+// Mapeamento de POP e Portador por cidade e bairro
+export interface PopPortador {
+  pop_id: number
+  portador_id: number
+}
+
+export function getPopPortador(cidade: string, bairro: string): PopPortador {
+  // Rio de Janeiro — mapeamento por bairro
+  if (cidade === "Rio de Janeiro") {
+    if (bairro === "Cavalcante") return { pop_id: 33, portador_id: 30 }
+    if (bairro === "Caju" || bairro === "Santo Cristo") return { pop_id: 31, portador_id: 30 }
+    return { pop_id: 34, portador_id: 30 } // Vila Santa Clara e demais
+  }
+  // Demais cidades — mapeamento por cidade
+  if (cidade === "Queimados")      return { pop_id: 39, portador_id: 34 }
+  if (cidade === "Duque de Caxias") return { pop_id: 38, portador_id: 33 }
+  return { pop_id: 1, portador_id: 32 } // São Gonçalo (default)
 }
