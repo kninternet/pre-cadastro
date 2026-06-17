@@ -79,8 +79,8 @@ export async function POST(request: Request) {
 
   const { logradouro, numero, complemento } = parseLogradouro(logradouroRaw ?? '')
   const vencimento = observacao?.match(/Vencimento:\s*Dia\s*(\S+)/)?.[1] ?? ''
-  const cidade_cobertura = observacao?.match(/Cidade cobertura:\s*(.+)/)?.[1]?.trim() ?? ''
-  const bairro_cobertura = observacao?.match(/Bairro cobertura:\s*(.+)/)?.[1]?.trim() ?? ''
+  const cidade_cobertura = observacao?.match(/Cidade cobertura:\s*([^|]+)/)?.[1]?.trim() ?? ''
+  const bairro_cobertura = observacao?.match(/Bairro cobertura:\s*([^|]+)/)?.[1]?.trim() ?? ''
   const plano_velocidade = observacao?.match(/Plano:\s*(.+?)\s*-/)?.[1]?.trim() ?? ''
   const plano_preco = observacao?.match(/-\s*(.+?)\s*\|/)?.[1]?.trim() ?? ''
   const planoValor = parseFloat(plano_preco.replace(/[^\d,]/g, '').replace(',', '.') || '0')
