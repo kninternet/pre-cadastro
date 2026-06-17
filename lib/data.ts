@@ -50,17 +50,20 @@ export const DATA: Record<string, CityData> = {
       "Cangulo": [
         { v: "400MB", p: "R$ 120,00" },
         { v: "500MB", p: "R$ 150,00" },
-        { v: "600MB", p: "R$ 170,00" }
+        { v: "600MB", p: "R$ 170,00" },
+        { v: "800MB", p: "R$ 200,00" }
       ],
       "Jardim Rosário": [
         { v: "400MB", p: "R$ 120,00" },
         { v: "500MB", p: "R$ 150,00" },
-        { v: "600MB", p: "R$ 170,00" }
+        { v: "600MB", p: "R$ 170,00" },
+        { v: "800MB", p: "R$ 200,00" }
       ],
       "Saracuruna": [
         { v: "400MB", p: "R$ 120,00" },
         { v: "500MB", p: "R$ 150,00" },
-        { v: "600MB", p: "R$ 170,00" }
+        { v: "600MB", p: "R$ 170,00" },
+        { v: "800MB", p: "R$ 200,00" }
       ],
     }
   },
@@ -73,17 +76,19 @@ export const DATA: Record<string, CityData> = {
         { v: "800MB", p: "R$ 149,90" }
       ],
       "Caju": [
-        { v: "100MB", p: "R$ 110,00" },
-        { v: "150MB", p: "R$ 130,00" },
-        { v: "200MB", p: "R$ 160,00" },
-        { v: "400MB", p: "R$ 240,00" }
+        { v: "100MB", p: "R$ 100,00" },
+        { v: "350MB", p: "R$ 120,00" },
+        { v: "450MB", p: "R$ 150,00" },
+        { v: "600MB", p: "R$ 180,00" },
+        { v: "800MB", p: "R$ 200,00" }
       ],
       "Santo Cristo": [
-        { v: "50MB", p: "R$ 100,00" },
-        { v: "100MB", p: "R$ 150,00" },
-        { v: "150MB", p: "R$ 200,00" },
-        { v: "200MB", p: "R$ 250,00" },
-        { v: "500MB", p: "R$ 400,00" }
+        { v: "50MB",  p: "R$ 100,00" },
+        { v: "100MB", p: "R$ 100,00" },
+        { v: "350MB", p: "R$ 120,00" },
+        { v: "450MB", p: "R$ 150,00" },
+        { v: "600MB", p: "R$ 180,00" },
+        { v: "800MB", p: "R$ 200,00" }
       ],
       "Cavalcante": [
         { v: "200MB", p: "R$ 59,90" },
@@ -105,21 +110,80 @@ export const DATA: Record<string, CityData> = {
   }
 }
 
-// Mapeamento de POP e Portador por cidade e bairro
+// ── Mapeamento POP + Portador por cidade/bairro ─────────────────────────────
 export interface PopPortador {
   pop_id: number
   portador_id: number
 }
 
 export function getPopPortador(cidade: string, bairro: string): PopPortador {
-  // Rio de Janeiro — mapeamento por bairro
   if (cidade === "Rio de Janeiro") {
-    if (bairro === "Cavalcante") return { pop_id: 33, portador_id: 30 }
+    if (bairro === "Cavalcante")  return { pop_id: 33, portador_id: 30 }
     if (bairro === "Caju" || bairro === "Santo Cristo") return { pop_id: 31, portador_id: 30 }
     return { pop_id: 34, portador_id: 30 } // Vila Santa Clara e demais
   }
-  // Demais cidades — mapeamento por cidade
-  if (cidade === "Queimados")      return { pop_id: 39, portador_id: 34 }
+  if (cidade === "Queimados")       return { pop_id: 39, portador_id: 34 }
   if (cidade === "Duque de Caxias") return { pop_id: 38, portador_id: 33 }
   return { pop_id: 1, portador_id: 32 } // São Gonçalo (default)
+}
+
+// ── Mapeamento plano_id SGP por cidade/bairro/velocidade ───────────────────
+type PlanoKey = string // `${cidade}|${bairro}|${velocidade}`
+
+const PLANO_MAP: Record<PlanoKey, number> = {
+  // São Gonçalo — POP 1
+  "São Gonçalo||350MB": 7,
+  "São Gonçalo||450MB": 8,
+  "São Gonçalo||600MB": 9,
+  "São Gonçalo||800MB": 1238,
+
+  // Duque de Caxias — POP 38
+  "Duque de Caxias||400MB": 228,
+  "Duque de Caxias||500MB": 229,
+  "Duque de Caxias||600MB": 230,
+  "Duque de Caxias||800MB": 231,
+
+  // Rio de Janeiro — Caju — POP 31
+  "Rio de Janeiro|Caju|100MB": 153,
+  "Rio de Janeiro|Caju|350MB": 1239,
+  "Rio de Janeiro|Caju|450MB": 1240,
+  "Rio de Janeiro|Caju|600MB": 1241,
+  "Rio de Janeiro|Caju|800MB": 1242,
+
+  // Rio de Janeiro — Santo Cristo — POP 31 (mesmos do Caju + 50MB)
+  "Rio de Janeiro|Santo Cristo|50MB":  193,
+  "Rio de Janeiro|Santo Cristo|100MB": 153,
+  "Rio de Janeiro|Santo Cristo|350MB": 1239,
+  "Rio de Janeiro|Santo Cristo|450MB": 1240,
+  "Rio de Janeiro|Santo Cristo|600MB": 1241,
+  "Rio de Janeiro|Santo Cristo|800MB": 1242,
+
+  // Rio de Janeiro — Cavalcante — POP 33
+  "Rio de Janeiro|Cavalcante|200MB": 209,
+  "Rio de Janeiro|Cavalcante|400MB": 210,
+  "Rio de Janeiro|Cavalcante|600MB": 211,
+
+  // Rio de Janeiro — Vila Santa Clara — POP 34
+  "Rio de Janeiro|Vila Santa Clara (Taquara)|100MB": 212,
+  "Rio de Janeiro|Vila Santa Clara (Taquara)|500MB": 213,
+  "Rio de Janeiro|Vila Santa Clara (Taquara)|800MB": 214,
+
+  // Queimados — POP 39
+  "Queimados||300MB": 1243,
+  "Queimados||500MB": 1244,
+  "Queimados||600MB": 1245,
+  "Queimados||800MB": 1246,
+}
+
+export function getPlanoId(cidade: string, bairro: string, velocidade: string): number {
+  // Tenta match específico por bairro primeiro
+  const keyBairro = `${cidade}|${bairro}|${velocidade}`
+  if (PLANO_MAP[keyBairro]) return PLANO_MAP[keyBairro]
+
+  // Fallback: match genérico por cidade (São Gonçalo e Duque de Caxias — mesmo plano em todos bairros)
+  const keyCidade = `${cidade}||${velocidade}`
+  if (PLANO_MAP[keyCidade]) return PLANO_MAP[keyCidade]
+
+  // Fallback final — plano padrão São Gonçalo 350MB
+  return 7
 }
