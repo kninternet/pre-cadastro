@@ -184,7 +184,7 @@ export async function POST(request: Request) {
               vencimento_dia: vencimentoDia,
               forma_cobranca_id: parseInt(process.env.SGP_FORMA_COBRANCA_ID ?? '3'),
               portador_id: getPopPortador(cidade_cobertura, bairro).portador_id,
-              nas: process.env.SGP_NAS ?? 'RB_PEIXOTO_STA_CATARINA',
+              nas: getPopPortador(cidade_cobertura, bairro_cobertura).nas,
               modoaquisicao: 1,
               tipo_equipamento: process.env.SGP_TIPO_EQUIPAMENTO ?? 'teste',
               autocobranca: true,

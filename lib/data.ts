@@ -110,21 +110,26 @@ export const DATA: Record<string, CityData> = {
   }
 }
 
-// ── Mapeamento POP + Portador por cidade/bairro ─────────────────────────────
+// ── Mapeamento POP + Portador + NAS por cidade/bairro ───────────────────────
 export interface PopPortador {
   pop_id: number
   portador_id: number
+  nas: string
 }
 
 export function getPopPortador(cidade: string, bairro: string): PopPortador {
   if (cidade === "Rio de Janeiro") {
-    if (bairro === "Cavalcante")  return { pop_id: 33, portador_id: 30 }
-    if (bairro === "Caju" || bairro === "Santo Cristo") return { pop_id: 31, portador_id: 30 }
-    return { pop_id: 34, portador_id: 30 } // Vila Santa Clara e demais
+    if (bairro === "Cavalcante")
+      return { pop_id: 33, portador_id: 30, nas: "bng.vrouter" }
+    if (bairro === "Caju" || bairro === "Santo Cristo")
+      return { pop_id: 31, portador_id: 30, nas: "bng.vrouter" }
+    return { pop_id: 34, portador_id: 30, nas: "bng.vrouter" } // Vila Santa Clara e demais
   }
-  if (cidade === "Queimados")       return { pop_id: 39, portador_id: 34 }
-  if (cidade === "Duque de Caxias") return { pop_id: 38, portador_id: 33 }
-  return { pop_id: 1, portador_id: 32 } // São Gonçalo (default)
+  if (cidade === "Queimados")
+    return { pop_id: 39, portador_id: 34, nas: "BNG-ACCELPPP-VYOS-GEN11" }
+  if (cidade === "Duque de Caxias")
+    return { pop_id: 38, portador_id: 33, nas: "BNG-ACCELPPP-VYOS-GEN11" }
+  return { pop_id: 1, portador_id: 32, nas: "RB_PEIXOTO_STA_CATARINA" } // São Gonçalo (default)
 }
 
 // ── Mapeamento plano_id SGP por cidade/bairro/velocidade ───────────────────
@@ -176,14 +181,11 @@ const PLANO_MAP: Record<PlanoKey, number> = {
 }
 
 export function getPlanoId(cidade: string, bairro: string, velocidade: string): number {
-  // Tenta match específico por bairro primeiro
   const keyBairro = `${cidade}|${bairro}|${velocidade}`
   if (PLANO_MAP[keyBairro]) return PLANO_MAP[keyBairro]
 
-  // Fallback: match genérico por cidade (São Gonçalo e Duque de Caxias — mesmo plano em todos bairros)
   const keyCidade = `${cidade}||${velocidade}`
   if (PLANO_MAP[keyCidade]) return PLANO_MAP[keyCidade]
 
-  // Fallback final — plano padrão São Gonçalo 350MB
-  return 7
+  return 7 // fallback — São Gonçalo 350MB
 }
