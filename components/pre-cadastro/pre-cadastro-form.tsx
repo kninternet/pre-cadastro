@@ -227,7 +227,7 @@ export function PreCadastroForm() {
       pontoreferencia: pontoReferencia.trim(),
       cpfcnpj: cpf.replace(/\D/g, ""),
       cpf_duplicado: cpfDuplicado,
-      observacao: `Plano: ${plano} | Vencimento: Dia ${vencimento} | Cidade cobertura: ${cidade}`,
+      observacao: `Plano: ${plano} | Vencimento: Dia ${vencimento} | Cidade cobertura: ${cidade} | Bairro cobertura: ${bairro}`,
       email: email.trim(),
       celular: whatsapp.replace(/\D/g, ""),
       ...(token && { token }),
