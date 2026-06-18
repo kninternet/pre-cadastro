@@ -119,15 +119,15 @@ export interface PopPortador {
 export function getPopPortador(cidade: string, bairro: string): PopPortador {
   if (cidade === "Rio de Janeiro") {
     if (bairro === "Cavalcante" || bairro === "Cavalcanti")
-      return { pop_id: 33, portador_id: 30, nas: "bng.vrouter" }
+      return { pop_id: 33, portador_id: 30, nas: "BNG-ACCELPPP-VYOS-GEN11" }
     if (bairro === "Caju" || bairro === "Santo Cristo")
-      return { pop_id: 31, portador_id: 30, nas: "bng.vrouter" }
-    return { pop_id: 34, portador_id: 30, nas: "bng.vrouter" }
+      return { pop_id: 31, portador_id: 30, nas: "BNG-ACCELPPP-VYOS-GEN11" }
+    return { pop_id: 34, portador_id: 30, nas: "BNG-ACCELPPP-VYOS-GEN11" }
   }
   if (cidade === "Queimados")
-    return { pop_id: 39, portador_id: 34, nas: "bng.vrouter" }
+    return { pop_id: 39, portador_id: 34, nas: "BNG-ACCELPPP-VYOS-GEN11" }
   if (cidade === "Duque de Caxias")
-    return { pop_id: 38, portador_id: 33, nas: "bng.vrouter" }
+    return { pop_id: 38, portador_id: 33, nas: "BNG-ACCELPPP-VYOS-GEN11" }
   return { pop_id: 1, portador_id: 32, nas: "BNG-ACCELPPP-VYOS-GEN11" }
 }
 // ── Mapeamento plano_id SGP por cidade/bairro/velocidade ───────────────────
