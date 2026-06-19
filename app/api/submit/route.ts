@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     nome, cpfcnpj, email, celular,
     logradouro: logradouroRaw,
     bairro, cidade, uf, cep,
-    pontoreferencia, observacao,
+    observacao,
     token,
     cpf_duplicado,
     client_ip_address, client_user_agent, fbp, ga_client_id, session_id,
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
         WHERE id = $9`,
         [
           cep.replace(/\D/g, ''), logradouro, numero, complemento ?? null,
-          bairro, cidade, uf, pontoreferencia, dbLeadId,
+          bairro, cidade, uf, 'suprimido', dbLeadId,
         ]
       )
     } catch (err) {
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
     complemento: complemento ?? '',
     bairro, cidade,
     cep: cep.replace(/\D/g, ''),
-    uf, pais: 'BR', pontoreferencia,
+    uf, pais: 'BR', pontoreferencia: 'suprimido',
   }
 
   if (!isCpfDup) {
@@ -243,7 +243,7 @@ export async function POST(request: Request) {
       `Bairro: ${bairro}`,
       `Cidade/UF: ${cidade} - ${uf}`,
       `CEP: ${cep}`,
-      `Referência: ${pontoreferencia}`,
+      `Referência: suprimido`,
       ``,
       `--- RASTREAMENTO ---`,
       `SGP Cliente ID: ${sgpClienteId ?? '—'}`,

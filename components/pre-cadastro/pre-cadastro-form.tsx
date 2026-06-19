@@ -47,19 +47,18 @@ export function PreCadastroForm() {
   const [bairroCep, setBairroCep] = useState("")
   const [cidadeEndereco, setCidadeEndereco] = useState("")
   const [estado, setEstado] = useState("")
-  const [pontoReferencia, setPontoReferencia] = useState("")
 
   useEffect(() => {
     trackStep1View()
-    const nomeParam     = searchParams.get("nome")
+    const nomeParam = searchParams.get("nome")
     const whatsappParam = searchParams.get("whatsapp") || searchParams.get("numero_whatsapp")
-    const cpfParam      = searchParams.get("cpf")
-    const emailParam    = searchParams.get("email")
+    const cpfParam = searchParams.get("cpf")
+    const emailParam = searchParams.get("email")
 
-    if (nomeParam)     setNome(nomeParam)
+    if (nomeParam) setNome(nomeParam)
     if (whatsappParam) setWhatsapp(formatPhone(whatsappParam))
-    if (cpfParam)      setCpf(formatCPF(cpfParam))
-    if (emailParam)    setEmail(emailParam)
+    if (cpfParam) setCpf(formatCPF(cpfParam))
+    if (emailParam) setEmail(emailParam)
   }, [searchParams])
 
   const validateStep = (step: number): boolean => {
@@ -67,27 +66,26 @@ export function PreCadastroForm() {
     let isValid = true
 
     if (step === 1) {
-      if (nome.trim().length < 3)   { newErrors.nome     = true; isValid = false }
-      if (!validateEmail(email))    { newErrors.email    = true; isValid = false }
+      if (nome.trim().length < 3) { newErrors.nome = true; isValid = false }
+      if (!validateEmail(email)) { newErrors.email = true; isValid = false }
       if (!validatePhone(whatsapp)) { newErrors.whatsapp = true; isValid = false }
     }
 
     if (step === 2) {
-      if (!cidade)               { newErrors.cidade               = true; isValid = false }
-      if (!bairro)               { newErrors.bairro               = true; isValid = false }
-      if (!plano)                { newErrors.plano                = true; isValid = false }
-      if (!vencimento)           { newErrors.vencimento           = true; isValid = false }
+      if (!cidade) { newErrors.cidade = true; isValid = false }
+      if (!bairro) { newErrors.bairro = true; isValid = false }
+      if (!plano) { newErrors.plano = true; isValid = false }
+      if (!vencimento) { newErrors.vencimento = true; isValid = false }
       if (!aceitaTaxaInstalacao) { newErrors.aceitaTaxaInstalacao = true; isValid = false }
-      if (!validateCPF(cpf))    { newErrors.cpf                  = true; isValid = false }
+      if (!validateCPF(cpf)) { newErrors.cpf = true; isValid = false }
     }
 
     if (step === 3) {
-      if (!validateCEP(cep))                 { newErrors.cep             = true; isValid = false }
-      if (!logradouro.trim())                { newErrors.logradouro      = true; isValid = false }
-      if (!numero.trim())                    { newErrors.numero          = true; isValid = false }
-      if (!cidadeEndereco.trim())            { newErrors.cidadeEndereco  = true; isValid = false }
-      if (!estado.trim())                    { newErrors.estado          = true; isValid = false }
-      if (pontoReferencia.trim().length < 3) { newErrors.pontoReferencia = true; isValid = false }
+      if (!validateCEP(cep)) { newErrors.cep = true; isValid = false }
+      if (!logradouro.trim()) { newErrors.logradouro = true; isValid = false }
+      if (!numero.trim()) { newErrors.numero = true; isValid = false }
+      if (!cidadeEndereco.trim()) { newErrors.cidadeEndereco = true; isValid = false }
+      if (!estado.trim()) { newErrors.estado = true; isValid = false }
     }
 
     setErrors(newErrors)
@@ -224,7 +222,6 @@ export function PreCadastroForm() {
       cidade: cidadeEndereco.trim(),
       uf: estado.trim(),
       cep: cep.replace(/\D/g, ""),
-      pontoreferencia: pontoReferencia.trim(),
       cpfcnpj: cpf.replace(/\D/g, ""),
       cpf_duplicado: cpfDuplicado,
       observacao: `Plano: ${plano} | Vencimento: Dia ${vencimento} | Cidade cobertura: ${cidade} | Bairro cobertura: ${bairro}`,
@@ -282,7 +279,6 @@ export function PreCadastroForm() {
             cidadeEndereco={cidadeEndereco}
             estado={estado}
             cep={cep.replace(/\D/g, "")}
-            pontoReferencia={pontoReferencia}
             onConfirm={handleSubmit}
             onBack={() => { setFlowState("form"); window.scrollTo({ top: 0, behavior: "smooth" }) }}
             onEditStep={handleEditStep}
@@ -382,7 +378,6 @@ export function PreCadastroForm() {
             bairroCep={bairroCep} setBairroCep={setBairroCep}
             cidadeEndereco={cidadeEndereco} setCidadeEndereco={setCidadeEndereco}
             estado={estado} setEstado={setEstado}
-            pontoReferencia={pontoReferencia} setPontoReferencia={setPontoReferencia}
             errors={errors}
             onSubmit={async () => goToReview()}
             onBack={backFromStep3}

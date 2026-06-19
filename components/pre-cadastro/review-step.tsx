@@ -22,7 +22,6 @@ interface ReviewStepProps {
   cidadeEndereco: string
   estado: string
   cep: string
-  pontoReferencia: string
   // Actions
   onConfirm: () => Promise<void>
   onBack: () => void
@@ -73,11 +72,11 @@ function Section({
 export function ReviewStep({
   nome, email, whatsapp,
   cidade, bairro, plano, vencimento, cpf, aceitaTaxaInstalacao,
-  logradouro, numero, complemento, bairroCep, cidadeEndereco, estado, cep, pontoReferencia,
+  logradouro, numero, complemento, bairroCep, cidadeEndereco, estado, cep,
   onConfirm, onBack, onEditStep, isSubmitting,
 }: ReviewStepProps) {
   const enderecoCompleto = [logradouro, numero, complemento].filter(Boolean).join(", ")
-  const cpfFormatado = cpf.length === 11 ? `${cpf.slice(0,3)}.***.***-${cpf.slice(9)}` : cpf
+  const cpfFormatado = cpf.length === 11 ? `${cpf.slice(0, 3)}.***.***-${cpf.slice(9)}` : cpf
   const whatsappFormatado = whatsapp.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
   const cepFormatado = cep.replace(/(\d{5})(\d{3})/, "$1-$2")
 
@@ -132,7 +131,6 @@ export function ReviewStep({
           <Row label="Bairro" value={bairroCep} />
           <Row label="Cidade/UF" value={`${cidadeEndereco} - ${estado}`} />
           <Row label="CEP" value={cepFormatado} />
-          <Row label="Referência" value={pontoReferencia} />
         </Section>
       </div>
 
