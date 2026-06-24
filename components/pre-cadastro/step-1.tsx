@@ -4,6 +4,7 @@ import { User, ArrowRight } from "lucide-react"
 import { CardHeader } from "./card-header"
 import { SectionTitle } from "./section-title"
 import { cn } from "@/lib/utils"
+import { formatPhone } from "@/lib/formatters"
 
 interface Step1Props {
   nome: string
@@ -14,14 +15,6 @@ interface Step1Props {
   setWhatsapp: (value: string) => void
   errors: Record<string, boolean>
   onNext: () => void
-}
-
-function formatPhone(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11)
-  if (digits.length <= 2) return digits
-  if (digits.length <= 6) return `(${digits.slice(0,2)}) ${digits.slice(2)}`
-  if (digits.length <= 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`
-  return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`
 }
 
 export function Step1({
@@ -118,7 +111,9 @@ export function Step1({
                 className={inputClass(errors.whatsapp)}
               />
               {errors.whatsapp && (
-                <span className="text-xs font-medium text-destructive">WhatsApp inválido</span>
+                <span className="text-xs font-medium text-destructive">
+                  Informe DDD + número. Ex: (21) 99999-9999
+                </span>
               )}
             </div>
           </div>
