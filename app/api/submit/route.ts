@@ -4,6 +4,7 @@ import nodemailer from 'nodemailer'
 import { sendCAPIEvent } from '@/lib/meta-capi'
 import { sendGA4Event } from '@/lib/ga4-mp'
 import { getPopPortador, getPlanoId } from '@/lib/data'
+import { buildEmailClienteHtml } from '@/lib/email-cliente'
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
     observacao,
     token,
     cpf_duplicado,
+    origem,
     client_ip_address, client_user_agent, fbp, ga_client_id, session_id,
   } = body
 
@@ -282,6 +284,27 @@ export async function POST(request: Request) {
     })
   } catch (err) {
     console.error('[MAIL ERROR]', err)
+  }
+
+  // ── 5b. E-mail cliente (apenas quando origem = atendimento) ────────────────
+  if (origem === 'atendimento' && email && !isCpfDup) {
+    try {
+      await mailer.sendMail({
+        from: `"KN Internet" <${process.env.SMTP_USER}>`,
+        to: email,
+        subject: `${nome.split(' ')[0]}, seu cadastro KN Internet foi recebido!`,
+        html: buildEmailClienteHtml({
+          nome,
+          plano_velocidade,
+          plano_preco,
+          vencimento,
+          cidade_cobertura,
+          bairro_cobertura,
+        }),
+      })
+    } catch (err) {
+      console.error('[MAIL CLIENTE ERROR]', err)
+    }
   }
 
   // ── 6. Meta CAPI ───────────────────────────────────────────────────────────
