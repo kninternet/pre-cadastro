@@ -268,7 +268,7 @@ export function AtendimentoForm() {
             placeholder="000.000.000-00" maxLength={14} className={inputClass(errors.cpf)} />
           {errors.cpf && <p className="text-xs mt-1 font-medium" style={{ color: "var(--destructive)" }}>CPF inválido</p>}
           {cpfStatus === "checking" && <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>Verificando...</p>}
-          {cpfStatus === "duplicate" && <p className="text-xs mt-1 font-medium" style={{ color: "#f97316" }}>CPF já cadastrado no SGP — lead encaminhado ao atendimento</p>}
+          {cpfStatus === "duplicate" && <p className="text-xs mt-1 font-medium" style={{ color: "#f97316" }}>CPF já cadastrado no SGP</p>}
           {cpfStatus === "ok" && <p className="text-xs mt-1 font-medium text-green-600">CPF disponível</p>}
         </div>
 
