@@ -60,7 +60,7 @@ export function AtendimentoForm() {
   const [loadingCep, setLoadingCep] = useState(false)
 
   const [cpfDuplicado, setCpfDuplicado] = useState(false)
-  const [cpfStatus, setCpfStatus] = useState<"idle"|"checking"|"ok"|"duplicate">("idle")
+  const [cpfStatus, setCpfStatus] = useState<"idle" | "checking" | "ok" | "duplicate">("idle")
 
   const cidades = Object.keys(DATA)
   const bairros = cidade ? Object.keys(DATA[cidade]?.bairros ?? {}) : []
@@ -84,11 +84,7 @@ export function AtendimentoForm() {
     setCpfStatus("checking")
     try {
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ""
-      const res = await fetch(`${basePath}/api/check-cpf`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cpf: digits }),
-      })
+      const res = await fetch(`${basePath}/api/check-cpf?cpf=${digits}`)
       const data = await res.json()
       if (data.found) {
         setCpfStatus("duplicate")
@@ -127,20 +123,20 @@ export function AtendimentoForm() {
 
   const validate = (): boolean => {
     const e: Record<string, boolean> = {}
-    if (!validateCPF(cpf))        e.cpf = true
-    if (nome.trim().length < 3)   e.nome = true
+    if (!validateCPF(cpf)) e.cpf = true
+    if (nome.trim().length < 3) e.nome = true
     if (!validatePhone(whatsapp)) e.whatsapp = true
-    if (!validateEmail(email))    e.email = true
-    if (!cidade)                  e.cidade = true
-    if (!bairro)                  e.bairro = true
-    if (!plano)                   e.plano = true
-    if (!vencimento)              e.vencimento = true
-    if (!aceitaTaxa)              e.taxa = true
-    if (!validateCEP(cep))       e.cep = true
-    if (!logradouro.trim())       e.logradouro = true
-    if (!numero.trim())           e.numero = true
-    if (!cidadeEndereco.trim())   e.cidadeEndereco = true
-    if (!estado.trim())           e.estado = true
+    if (!validateEmail(email)) e.email = true
+    if (!cidade) e.cidade = true
+    if (!bairro) e.bairro = true
+    if (!plano) e.plano = true
+    if (!vencimento) e.vencimento = true
+    if (!aceitaTaxa) e.taxa = true
+    if (!validateCEP(cep)) e.cep = true
+    if (!logradouro.trim()) e.logradouro = true
+    if (!numero.trim()) e.numero = true
+    if (!cidadeEndereco.trim()) e.cidadeEndereco = true
+    if (!estado.trim()) e.estado = true
     setErrors(e)
     if (Object.keys(e).length > 0) {
       if (e.taxa) toast.error("Confirme o aceite da taxa de instalação")
