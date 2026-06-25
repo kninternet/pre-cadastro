@@ -28,20 +28,17 @@ function fetchWithTimeout(url: string, options: RequestInit, ms = 8000): Promise
 
 async function checkCpfSgp(cpf: string): Promise<{ found: boolean; cliente_id?: number }> {
   try {
-    const base  = process.env.SGP_BASE_URL ?? 'https://netecom.sgplocal.com.br'
-    const app   = process.env.SGP_APP ?? ''
+    const base = process.env.SGP_BASE_URL ?? 'https://netecom.sgplocal.com.br'
+    const app = process.env.SGP_APP ?? ''
     const token = process.env.SGP_TOKEN ?? ''
 
-    const res = await fetchWithTimeout(
-      `${base}/api/crm/cliente/?cpfcnpj=${cpf}`,
-      {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ app, token }),
-      },
-      6000
-    )
-    const data = await res.json() as Record<string, unknown>
+    const { exec } = await import('child_process')
+    const { promisify } = await import('util')
+    const execAsync = promisify(exec)
+
+    const cmd = `curl -s -X GET '${base}/api/crm/cliente/?cpfcnpj=${cpf}' --form 'app="${app}"' --form 'token="${token}"'`
+    const { stdout } = await execAsync(cmd)
+    const data = JSON.parse(stdout)
     if (data?.id) return { found: true, cliente_id: data.id as number }
     return { found: false }
   } catch {
@@ -158,12 +155,12 @@ export async function POST(request: Request) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          app:      process.env.SGP_APP ?? '',
-          token:    process.env.SGP_TOKEN ?? '',
+          app: process.env.SGP_APP ?? '',
+          token: process.env.SGP_TOKEN ?? '',
           nome,
           cpfcnpj: cpfLimpo,
           email,
-          celular:  celular.replace(/\D/g, '').replace(/^55(\d{9,11})$/, '$1').replace(/^(\d{2})(\d{8})$/, '$19$2'),
+          celular: celular.replace(/\D/g, '').replace(/^55(\d{9,11})$/, '$1').replace(/^(\d{2})(\d{8})$/, '$19$2'),
           endereco: enderecoSgp,
         }),
       },
@@ -174,8 +171,8 @@ export async function POST(request: Request) {
 
     if (sgpData.cliente_id) {
       sgpClienteId = sgpData.cliente_id as number
-      sgpOk        = true
-      sgpMessage   = 'Cliente criado com sucesso'
+      sgpOk = true
+      sgpMessage = 'Cliente criado com sucesso'
     } else {
       sgpMessage = String(
         (sgpData.errors as Record<string, string>)?.cpfcnpj ??
