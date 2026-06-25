@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Restringir acesso de crawlers ao formulário de atendimento
+Disallow: /atendimento
