@@ -9,7 +9,7 @@ export function formatCPF(value: string): string {
 
 export function formatPhone(value: string): string {
   let digits = value.replace(/\D/g, '')
-  // Strip DDI 55 se presente (ex: 55219791232 → 219791232)
+  // Strip DDI 55 se presente
   if (digits.startsWith('55') && digits.length >= 11) {
     digits = digits.slice(2)
   }
@@ -52,10 +52,20 @@ export function validateCPF(cpf: string): boolean {
 export function validatePhone(phone: string): boolean {
   let digits = phone.replace(/\D/g, '')
   // Strip DDI 55 se presente
-  if (digits.startsWith('55') && digits.length >= 11) {
-    digits = digits.slice(2)
-  }
-  return digits.length === 10 || digits.length === 11
+  if (digits.startsWith('55') && digits.length >= 11) digits = digits.slice(2)
+  // Fixo: DDD + 8 dígitos (10 total)
+  if (digits.length === 10) return true
+  // Celular: DDD + 9 + 8 dígitos (11 total, terceiro dígito obrigatoriamente 9)
+  if (digits.length === 11 && digits[2] === '9') return true
+  return false
+}
+
+// Sanitiza celular para envio ao SGP
+// Remove DDI 55, garante formato correto
+export function sanitizePhoneForSGP(phone: string): string {
+  let digits = phone.replace(/\D/g, '')
+  if (digits.startsWith('55') && digits.length >= 11) digits = digits.slice(2)
+  return digits
 }
 
 export function validateCEP(cep: string): boolean {

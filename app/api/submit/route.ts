@@ -4,6 +4,7 @@ import nodemailer from 'nodemailer'
 import { sendCAPIEvent } from '@/lib/meta-capi'
 import { sendGA4Event } from '@/lib/ga4-mp'
 import { getPopPortador, getPlanoId } from '@/lib/data'
+import { sanitizePhoneForSGP } from '@/lib/formatters'
 import { buildEmailClienteHtml } from '@/lib/email-cliente'
 
 const pool = new Pool({
@@ -131,7 +132,7 @@ export async function POST(request: Request) {
             nome,
             cpfcnpj: cpfLimpo,
             email,
-            celular:  celular.replace(/\D/g, '').replace(/^55(\d{10,11})$/, '$1').replace(/^(\d{2})(\d{8})$/, '$19$2'),
+            celular:  sanitizePhoneForSGP(celular),
             endereco: enderecoSgp,
           }),
         },
