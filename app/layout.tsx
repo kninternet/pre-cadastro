@@ -23,19 +23,30 @@ const META_PIXEL_ID = '999831345819625'
 const BASE_URL = 'https://cadastro.kninternet.com.br'
 
 export const metadata: Metadata = {
-  // Não indexar em buscadores — esta página é distribuída pelo atendimento
   robots: { index: false, follow: false },
 
-  title: 'Falta pouco! Cadastre-se e navegue rápido – KN',
+  title: 'Formulário de Cadastro - KN Internet | Rio de Janeiro',
   description:
     'Internet de fibra óptica de alta velocidade no Rio de Janeiro. Preencha o formulário e venha para a KN Internet.',
 
-  // Open Graph (WhatsApp, Facebook, LinkedIn, Telegram…)
+  icons: {
+    icon: [
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    other: [
+      { rel: 'icon', url: '/favicon.ico' },
+    ],
+  },
+
   openGraph: {
     type: 'website',
     url: BASE_URL,
     siteName: 'KN Internet',
-    title: 'Falta pouco! Cadastre-se e navegue rápido – KN',
+    title: 'Formulário de Cadastro - KN Internet | Rio de Janeiro',
     description:
       'Internet de fibra óptica de alta velocidade no Rio de Janeiro. Preencha o formulário e venha para a KN Internet.',
     images: [
@@ -49,10 +60,9 @@ export const metadata: Metadata = {
     locale: 'pt_BR',
   },
 
-  // Twitter Card (também usado por algumas redes)
   twitter: {
     card: 'summary_large_image',
-    title: 'Falta pouco! Cadastre-se e navegue rápido – KN',
+    title: 'Formulário de Cadastro - KN Internet | Rio de Janeiro',
     description:
       'Internet de fibra óptica de alta velocidade no Rio de Janeiro. Preencha o formulário e venha para a KN Internet.',
     images: [`${BASE_URL}/og-image.png`],
