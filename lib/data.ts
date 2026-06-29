@@ -83,7 +83,7 @@ export const DATA: Record<string, CityData> = {
       ],
       "Santo Cristo": [
         { v: "50MB", p: "R$ 100,00" },
-        { v: "100MB", p: "R$ 100,00" },
+        { v: "100MB", p: "R$ 150,00" },
       ],
       "Cavalcante": [
         { v: "200MB", p: "R$ 59,90" },
