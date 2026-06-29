@@ -84,10 +84,6 @@ export const DATA: Record<string, CityData> = {
       "Santo Cristo": [
         { v: "50MB", p: "R$ 100,00" },
         { v: "100MB", p: "R$ 100,00" },
-        { v: "350MB", p: "R$ 120,00" },
-        { v: "450MB", p: "R$ 150,00" },
-        { v: "600MB", p: "R$ 180,00" },
-        { v: "800MB", p: "R$ 200,00" }
       ],
       "Cavalcante": [
         { v: "200MB", p: "R$ 59,90" },
@@ -118,11 +114,8 @@ export interface PopPortador {
 
 export function getPopPortador(cidade: string, bairro: string): PopPortador {
   if (cidade === "Rio de Janeiro") {
-    if (bairro === "Cavalcante" || bairro === "Cavalcanti")
-      return { pop_id: 33, portador_id: 30, nas: "BNG-ACCELPPP-VYOS-GEN11" }
-    if (bairro === "Caju" || bairro === "Santo Cristo")
-      return { pop_id: 31, portador_id: 30, nas: "BNG-ACCELPPP-VYOS-GEN11" }
-    return { pop_id: 34, portador_id: 30, nas: "BNG-ACCELPPP-VYOS-GEN11" }
+    // Todos os bairros do Rio de Janeiro — POP 31 / Portador 30
+    return { pop_id: 31, portador_id: 30, nas: "BNG-ACCELPPP-VYOS-GEN11" }
   }
   if (cidade === "Queimados")
     return { pop_id: 39, portador_id: 34, nas: "BNG-ACCELPPP-VYOS-GEN11" }
@@ -130,6 +123,7 @@ export function getPopPortador(cidade: string, bairro: string): PopPortador {
     return { pop_id: 38, portador_id: 33, nas: "BNG-ACCELPPP-VYOS-GEN11" }
   return { pop_id: 1, portador_id: 32, nas: "BNG-ACCELPPP-VYOS-GEN11" }
 }
+
 // ── Mapeamento plano_id SGP por cidade/bairro/velocidade ───────────────────
 type PlanoKey = string // `${cidade}|${bairro}|${velocidade}`
 
@@ -152,24 +146,19 @@ const PLANO_MAP: Record<PlanoKey, number> = {
   "Rio de Janeiro|Caju|600MB": 1241,
   "Rio de Janeiro|Caju|800MB": 1242,
 
-  // Rio de Janeiro — Santo Cristo — POP 31 (mesmos do Caju + 50MB)
-  "Rio de Janeiro|Santo Cristo|50MB": 193,
+  // Rio de Janeiro — Santo Cristo — POP 31
+  "Rio de Janeiro|Santo Cristo|50MB":  193,
   "Rio de Janeiro|Santo Cristo|100MB": 153,
-  "Rio de Janeiro|Santo Cristo|350MB": 1239,
-  "Rio de Janeiro|Santo Cristo|450MB": 1240,
-  "Rio de Janeiro|Santo Cristo|600MB": 1241,
-  "Rio de Janeiro|Santo Cristo|800MB": 1242,
 
-  // Rio de Janeiro — Cavalcante — POP 33
-  // Rio de Janeiro — Cavalcante/Cavalcanti — POP 33
-  "Rio de Janeiro|Cavalcante|200MB": 209,
-  "Rio de Janeiro|Cavalcante|400MB": 210,
-  "Rio de Janeiro|Cavalcante|600MB": 211,
-  "Rio de Janeiro|Cavalcanti|200MB": 209,
-  "Rio de Janeiro|Cavalcanti|400MB": 210,
-  "Rio de Janeiro|Cavalcanti|600MB": 211,
+  // Rio de Janeiro — Cavalcante/Cavalcanti — POP 31
+  "Rio de Janeiro|Cavalcante|200MB":  209,
+  "Rio de Janeiro|Cavalcante|400MB":  210,
+  "Rio de Janeiro|Cavalcante|600MB":  211,
+  "Rio de Janeiro|Cavalcanti|200MB":  209,
+  "Rio de Janeiro|Cavalcanti|400MB":  210,
+  "Rio de Janeiro|Cavalcanti|600MB":  211,
 
-  // Rio de Janeiro — Vila Santa Clara — POP 34
+  // Rio de Janeiro — Vila Santa Clara — POP 31
   "Rio de Janeiro|Vila Santa Clara (Taquara)|100MB": 212,
   "Rio de Janeiro|Vila Santa Clara (Taquara)|500MB": 213,
   "Rio de Janeiro|Vila Santa Clara (Taquara)|800MB": 214,
