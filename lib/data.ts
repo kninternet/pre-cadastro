@@ -84,6 +84,8 @@ export const DATA: Record<string, CityData> = {
       "Santo Cristo": [
         { v: "50MB", p: "R$ 100,00" },
         { v: "100MB", p: "R$ 150,00" },
+        { v: "150MB", p: "R$ 200,00" },
+        { v: "200MB", p: "R$ 250,00" },
       ],
       "Cavalcante": [
         { v: "200MB", p: "R$ 59,90" },
@@ -147,16 +149,18 @@ const PLANO_MAP: Record<PlanoKey, number> = {
   "Rio de Janeiro|Caju|800MB": 1242,
 
   // Rio de Janeiro — Santo Cristo — POP 31
-  "Rio de Janeiro|Santo Cristo|50MB":  193,
-  "Rio de Janeiro|Santo Cristo|100MB": 153,
+  "Rio de Janeiro|Santo Cristo|50MB": 193,
+  "Rio de Janeiro|Santo Cristo|100MB": 194,
+  "Rio de Janeiro|Santo Cristo|150MB": 195,
+  "Rio de Janeiro|Santo Cristo|200MB": 196,
 
   // Rio de Janeiro — Cavalcante/Cavalcanti — POP 31
-  "Rio de Janeiro|Cavalcante|200MB":  209,
-  "Rio de Janeiro|Cavalcante|400MB":  210,
-  "Rio de Janeiro|Cavalcante|600MB":  211,
-  "Rio de Janeiro|Cavalcanti|200MB":  209,
-  "Rio de Janeiro|Cavalcanti|400MB":  210,
-  "Rio de Janeiro|Cavalcanti|600MB":  211,
+  "Rio de Janeiro|Cavalcante|200MB": 209,
+  "Rio de Janeiro|Cavalcante|400MB": 210,
+  "Rio de Janeiro|Cavalcante|600MB": 211,
+  "Rio de Janeiro|Cavalcanti|200MB": 209,
+  "Rio de Janeiro|Cavalcanti|400MB": 210,
+  "Rio de Janeiro|Cavalcanti|600MB": 211,
 
   // Rio de Janeiro — Vila Santa Clara — POP 31
   "Rio de Janeiro|Vila Santa Clara (Taquara)|100MB": 212,
