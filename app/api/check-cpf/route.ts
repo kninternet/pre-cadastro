@@ -6,6 +6,13 @@ const execAsync = promisify(exec)
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
+
+  const authHeader = request.headers.get('authorization') ?? ''
+  const secret = process.env.WEBHOOK_SECRET ?? ''
+  if (secret && authHeader !== `Bearer ${secret}`) {
+    return NextResponse.json({ status: 'error', message: 'Não autorizado' }, { status: 401 })
+  }
+
   const cpf = searchParams.get('cpf')?.replace(/\D/g, '')
 
   if (!cpf || cpf.length !== 11) {
