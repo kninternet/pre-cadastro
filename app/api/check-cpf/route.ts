@@ -9,12 +9,27 @@ export async function GET(request: Request) {
   const cpf = searchParams.get('cpf')?.replace(/\D/g, '')
 
   if (!cpf || cpf.length !== 11) {
-    return NextResponse.json({ status: 'error', message: 'CPF inválido' }, { status: 400 })
+    return NextResponse.json({ status: 'error', valid: false, message: 'CPF inválido' }, { status: 400 })
   }
 
-  const app   = process.env.SGP_APP ?? ''
+  function validarCPF(c: string): boolean {
+    if (/^(\d)\1{10}$/.test(c)) return false
+    const calc = (x: number) => {
+      let sum = 0
+      for (let i = 0; i < x; i++) sum += parseInt(c[i]) * (x + 1 - i)
+      const r = (sum * 10) % 11
+      return r === 10 || r === 11 ? 0 : r
+    }
+    return calc(9) === parseInt(c[9]) && calc(10) === parseInt(c[10])
+  }
+
+  if (!validarCPF(cpf)) {
+    return NextResponse.json({ status: 'error', valid: false, message: 'CPF inválido' }, { status: 400 })
+  }
+
+  const app = process.env.SGP_APP ?? ''
   const token = process.env.SGP_TOKEN ?? ''
-  const base  = process.env.SGP_BASE_URL ?? 'https://netecom.sgplocal.com.br'
+  const base = process.env.SGP_BASE_URL ?? 'https://netecom.sgplocal.com.br'
 
   try {
     const { stdout } = await execAsync(
