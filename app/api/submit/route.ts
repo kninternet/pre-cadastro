@@ -6,6 +6,7 @@ import { sendGA4Event } from '@/lib/ga4-mp'
 import { getPopPortador, getPlanoId } from '@/lib/data'
 import { sanitizePhoneForSGP } from '@/lib/formatters'
 import { buildEmailClienteHtml } from '@/lib/email-cliente'
+import { checkCpfInSgp } from '@/lib/sgp-client'
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -85,7 +86,15 @@ export async function POST(request: Request) {
 
   const dbLeadId  = lead_id ? parseInt(lead_id) : null
   const cpfLimpo  = cpfcnpj.replace(/\D/g, '')
-  const isCpfDup  = cpf_duplicado === 'true' || cpf_duplicado === true as unknown as string
+  const clientFlagCpfDup = cpf_duplicado === 'true' || cpf_duplicado === true as unknown as string
+
+  // ── Re-verificação server-side do CPF no SGP ────────────────────────────────
+  // O front (step-2) já checa duplicidade em tempo real via /api/internal/check-cpf,
+  // mas esse resultado NUNCA deve ser a única barreira: o cliente pode manipular o
+  // payload, e falhas de rede/timeout no meio do caminho não podem virar cadastro
+  // duplicado silencioso no SGP. Re-checamos aqui antes de decidir criar o cliente.
+  const cpfCheckServer = await checkCpfInSgp(cpfLimpo)
+  const isCpfDup = clientFlagCpfDup || (cpfCheckServer.ok && cpfCheckServer.found)
 
   // ── 1. Banco — endereço (step 3) ───────────────────────────────────────────
   if (dbLeadId) {
