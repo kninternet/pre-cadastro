@@ -124,8 +124,9 @@ export function AtendimentoForm() {
     setCpfStatus("checking")
     try {
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ""
-      const res = await fetch(`${basePath}/api/check-cpf?cpf=${digits}`)
+      const res = await fetch(`${basePath}/api/internal/check-cpf?cpf=${digits}`)
       const data = await res.json()
+      if (!res.ok) { setCpfStatus("idle"); return }
       if (data.found) {
         setCpfStatus("duplicate")
         setCpfDuplicado(true)
@@ -150,9 +151,9 @@ export function AtendimentoForm() {
       setLoadingCep(true)
       try {
         const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ""
-        const res = await fetch(`${basePath}/api/cep?cep=${digits}`)
+        const res = await fetch(`${basePath}/api/internal/cep?cep=${digits}`)
         const data = await res.json()
-        if (!data.error) {
+        if (res.ok && !data.error) {
           setLogradouro(data.logradouro || "")
           setBairroCep(data.bairro || "")
           setCidadeEndereco(data.cidade || "")

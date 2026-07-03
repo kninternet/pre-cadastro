@@ -1,15 +1,12 @@
 import { NextResponse } from 'next/server'
 import { buscarCep } from '@/lib/sgp-client'
 
+/**
+ * Rota INTERNA — consumida apenas pelo próprio front-end (step-3, atendimento).
+ * Sem Bearer, mesmo motivo do /api/internal/check-cpf.
+ */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-
-  const authHeader = request.headers.get('authorization') ?? ''
-  const secret = process.env.WEBHOOK_SECRET ?? ''
-  if (secret && authHeader !== `Bearer ${secret}`) {
-    return NextResponse.json({ status: 'error', message: 'Não autorizado' }, { status: 401 })
-  }
-
   const cep = searchParams.get('cep') ?? ''
   const result = await buscarCep(cep)
 

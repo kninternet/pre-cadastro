@@ -72,10 +72,11 @@ export function Step3({
     if (digits.length === 8) {
       setLoadingCep(true)
       try {
-        const response = await fetch(`/api/cep?cep=${digits}`)
+        const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ""
+        const response = await fetch(`${basePath}/api/internal/cep?cep=${digits}`)
         const data = await response.json()
 
-        if (data.error) { toast.error("CEP não encontrado"); return }
+        if (!response.ok || data.error) { toast.error("CEP não encontrado"); return }
 
         const returnedCity: string = data.cidade || ""
         if (cidade && normalizeName(returnedCity) !== normalizeName(cidade)) {

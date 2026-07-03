@@ -76,8 +76,12 @@ export function Step2({
     const digits = formatted.replace(/\D/g, "")
     if (digits.length === 11 && validateCPF(formatted)) {
       setCpfStatus("checking")
-      fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/check-cpf?cpf=${digits}`)
-        .then(r => r.json())
+      fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/internal/check-cpf?cpf=${digits}`)
+        .then(async r => {
+          const data = await r.json()
+          if (!r.ok) throw new Error(data.message ?? "Erro ao validar CPF")
+          return data
+        })
         .then(data => {
           if (data.found) {
             setCpfStatus("duplicate")
