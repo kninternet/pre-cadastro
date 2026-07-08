@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils"
 import { formatCPF, formatPhone, formatCEP, validateEmail, validateCPF, validatePhone, validateCEP } from "@/lib/formatters"
 import { DATA } from "@/lib/data"
 
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? ""
+
 const inputClass = (hasError = false, readOnly = false) =>
   cn(
     "w-full h-[46px] px-3.5 bg-input border-[1.5px] border-border rounded-lg text-[15px] text-foreground transition-all outline-none",
@@ -33,12 +35,10 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   )
 }
 
-// Normaliza string para comparação (remove acentos, lowercase)
 function normalize(s: string) {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()
 }
 
-// Tenta encontrar cidade e bairro de cobertura a partir dos dados do CEP
 function matchCobertura(cidadeCep: string, bairroCep: string): { cidade: string; bairro: string } | null {
   for (const cidade of Object.keys(DATA)) {
     if (normalize(cidadeCep).includes(normalize(cidade)) || normalize(cidade).includes(normalize(cidadeCep))) {
@@ -48,7 +48,6 @@ function matchCobertura(cidadeCep: string, bairroCep: string): { cidade: string;
           return { cidade, bairro }
         }
       }
-      // Cidade encontrada mas bairro não — retorna cidade para o atendente escolher bairro
       return { cidade, bairro: "" }
     }
   }
@@ -61,18 +60,15 @@ export function AtendimentoForm() {
   const [done, setDone] = useState(false)
   const [errors, setErrors] = useState<Record<string, boolean>>({})
 
+  // Dados pessoais
   const [cpf, setCpf] = useState("")
   const [nome, setNome] = useState("")
   const [whatsapp, setWhatsapp] = useState("")
   const [email, setEmail] = useState("")
+  const [cpfDuplicado, setCpfDuplicado] = useState(false)
+  const [cpfStatus, setCpfStatus] = useState<"idle"|"checking"|"ok"|"duplicate">("idle")
 
-  const [cidade, setCidade] = useState("")
-  const [bairro, setBairro] = useState("")
-  const [plano, setPlano] = useState("")
-  const [vencimento, setVencimento] = useState("")
-  const [aceitaTaxa, setAceitaTaxa] = useState(false)
-  const [semCobertura, setSemCobertura] = useState(false)
-
+  // Endereço — todos editáveis
   const [cep, setCep] = useState("")
   const [logradouro, setLogradouro] = useState("")
   const [numero, setNumero] = useState("")
@@ -82,14 +78,35 @@ export function AtendimentoForm() {
   const [estado, setEstado] = useState("")
   const [loadingCep, setLoadingCep] = useState(false)
 
-  const [cpfDuplicado, setCpfDuplicado] = useState(false)
-  const [cpfStatus, setCpfStatus] = useState<"idle"|"checking"|"ok"|"duplicate">("idle")
+  // Cobertura — auto mas editável
+  const [cidade, setCidade] = useState("")
+  const [bairro, setBairro] = useState("")
+  const [cidadeManual, setCidadeManual] = useState(false) // true quando fora da cobertura
 
+  // Plano — select quando na lista, texto livre quando fora
+  const [plano, setPlano] = useState("")
+  const [planoManual, setPlanoManual] = useState(false)
+  const [planoTexto, setPlanoTexto] = useState("") // velocidade livre
+  const [planoPrecoTexto, setPlanoPrecoTexto] = useState("") // preço livre
+
+  const [vencimento, setVencimento] = useState("")
+  const [aceitaTaxa, setAceitaTaxa] = useState(false)
+
+  const cidades = Object.keys(DATA)
   const bairros = cidade ? Object.keys(DATA[cidade]?.bairros ?? {}) : []
-  const planos = (cidade && bairro) ? (DATA[cidade]?.bairros[bairro] ?? []) : []
-  const vencimentos = cidade ? (DATA[cidade]?.vencimentos ?? []) : []
+  const planos = (cidade && bairro && DATA[cidade]?.bairros[bairro]) ? DATA[cidade].bairros[bairro] : []
+  const vencimentos = cidade ? (DATA[cidade]?.vencimentos ?? []) : ["5", "20"]
 
-  useEffect(() => { setPlano(""); setVencimento("") }, [bairro])
+  useEffect(() => { setPlano(""); setPlanoTexto(""); setPlanoPrecoTexto("") }, [bairro])
+
+  // Quando não há planos na lista, ativa modo manual
+  useEffect(() => {
+    if (cidade && bairro && planos.length === 0) {
+      setPlanoManual(true)
+    } else {
+      setPlanoManual(false)
+    }
+  }, [cidade, bairro, planos.length])
 
   useEffect(() => {
     const n = searchParams.get("nome"); if (n) setNome(n)
@@ -98,43 +115,31 @@ export function AtendimentoForm() {
     const e = searchParams.get("email"); if (e) setEmail(e)
   }, [searchParams])
 
-  // Quando CEP preenche cidade/bairro, tenta match automático de cobertura
+  // Auto-detecta cobertura pelo CEP
   useEffect(() => {
-    if (!cidadeEndereco || !bairroCep) return
+    if (!cidadeEndereco) return
     const match = matchCobertura(cidadeEndereco, bairroCep)
     if (match) {
-      setSemCobertura(false)
+      setCidadeManual(false)
       setCidade(match.cidade)
       setBairro(match.bairro)
-      setPlano("")
-      setVencimento("")
     } else {
-      setSemCobertura(true)
+      setCidadeManual(true)
       setCidade("")
       setBairro("")
-      setPlano("")
-      setVencimento("")
     }
+    setPlano(""); setPlanoTexto(""); setPlanoPrecoTexto("")
   }, [cidadeEndereco, bairroCep])
 
   const checkCpf = async (value: string) => {
     const digits = value.replace(/\D/g, "")
-    if (digits.length !== 11) return
-    if (!validateCPF(value)) return
+    if (digits.length !== 11 || !validateCPF(value)) return
     setCpfStatus("checking")
     try {
-      const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ""
-      const res = await fetch(`${basePath}/api/internal/check-cpf?cpf=${digits}`)
+      const res = await fetch(`${BASE}/api/check-cpf?cpf=${digits}`)
       const data = await res.json()
-      if (!res.ok) { setCpfStatus("idle"); return }
-      if (data.found) {
-        setCpfStatus("duplicate")
-        setCpfDuplicado(true)
-        toast.warning("CPF já cadastrado no SGP")
-      } else {
-        setCpfStatus("ok")
-        setCpfDuplicado(false)
-      }
+      if (data.found) { setCpfStatus("duplicate"); setCpfDuplicado(true); toast.warning("CPF já cadastrado no SGP") }
+      else { setCpfStatus("ok"); setCpfDuplicado(false) }
     } catch { setCpfStatus("idle") }
   }
 
@@ -144,16 +149,15 @@ export function AtendimentoForm() {
     const digits = formatted.replace(/\D/g, "")
     if (digits.length < 8) {
       setLogradouro(""); setBairroCep(""); setCidadeEndereco(""); setEstado("")
-      setSemCobertura(false); setCidade(""); setBairro(""); setPlano(""); setVencimento("")
+      setCidade(""); setBairro(""); setCidadeManual(false)
       return
     }
     if (digits.length === 8) {
       setLoadingCep(true)
       try {
-        const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ""
-        const res = await fetch(`${basePath}/api/internal/cep?cep=${digits}`)
+        const res = await fetch(`${BASE}/api/cep?cep=${digits}`)
         const data = await res.json()
-        if (res.ok && !data.error) {
+        if (!data.error) {
           setLogradouro(data.logradouro || "")
           setBairroCep(data.bairro || "")
           setCidadeEndereco(data.cidade || "")
@@ -166,22 +170,28 @@ export function AtendimentoForm() {
     }
   }
 
+  const getPlanoFinal = () => {
+    if (planoManual) return planoTexto && planoPrecoTexto ? `${planoTexto} - ${planoPrecoTexto}` : planoTexto
+    return plano
+  }
+
   const validate = (): boolean => {
     const e: Record<string, boolean> = {}
     if (!validateCPF(cpf))        e.cpf = true
     if (nome.trim().length < 3)   e.nome = true
     if (!validatePhone(whatsapp)) e.whatsapp = true
     if (!validateEmail(email))    e.email = true
-    if (!cidade)                  e.cidade = true
-    if (!bairro)                  e.bairro = true
-    if (!plano)                   e.plano = true
-    if (!vencimento)              e.vencimento = true
-    if (!aceitaTaxa)              e.taxa = true
     if (!validateCEP(cep))       e.cep = true
     if (!logradouro.trim())       e.logradouro = true
     if (!numero.trim())           e.numero = true
-    if (!cidadeEndereco.trim())   e.cidadeEndereco = true
-    if (!estado.trim())           e.estado = true
+    if (!cidade)                  e.cidade = true
+    if (!vencimento)              e.vencimento = true
+    if (!aceitaTaxa)              e.taxa = true
+    if (planoManual) {
+      if (!planoTexto.trim()) e.plano = true
+    } else {
+      if (!plano) e.plano = true
+    }
     setErrors(e)
     if (Object.keys(e).length > 0) {
       if (e.taxa) toast.error("Confirme o aceite da taxa de instalação")
@@ -194,31 +204,41 @@ export function AtendimentoForm() {
   const handleSubmit = async () => {
     if (!validate()) return
     setIsSubmitting(true)
-    const [planoVel, planoPre] = plano.split(" - ")
+    const planoFinal = getPlanoFinal()
+    const [planoVel, planoPre] = planoFinal.includes(" - ") ? planoFinal.split(" - ") : [planoFinal, ""]
+
     try {
-      const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ""
-      const s1 = await fetch(`${basePath}/api/step1`, {
+      const s1 = await fetch(`${BASE}/api/step1`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session_id: `atend-${Date.now()}`, nome: nome.trim(), email: email.trim(), whatsapp: whatsapp.replace(/\D/g, ""), origem: "atendimento" }),
       })
       const s1data = await s1.json()
       const leadId = s1data.lead_id
-      await fetch(`${basePath}/api/step2`, {
+
+      await fetch(`${BASE}/api/step2`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lead_id: leadId, cpf: cpf.replace(/\D/g, ""), cidade, bairro, plano, vencimento, aceita_taxa_instalacao: true, origem: "atendimento" }),
+        body: JSON.stringify({ lead_id: leadId, cpf: cpf.replace(/\D/g, ""), cidade, bairro: bairro || bairroCep, plano: planoFinal, vencimento, aceita_taxa_instalacao: true, origem: "atendimento" }),
       })
-      const res = await fetch(`${basePath}/api/submit`, {
+
+      const res = await fetch(`${BASE}/api/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          lead_id: String(leadId), nome: nome.trim(), cpfcnpj: cpf.replace(/\D/g, ""),
-          email: email.trim(), celular: whatsapp.replace(/\D/g, ""),
+          lead_id: String(leadId),
+          nome: nome.trim(),
+          cpfcnpj: cpf.replace(/\D/g, ""),
+          email: email.trim(),
+          celular: whatsapp.replace(/\D/g, ""),
           logradouro: `${logradouro.trim()}, ${numero.trim()}${complemento ? ` - ${complemento}` : ""}`,
-          bairro: bairroCep || bairro, cidade: cidadeEndereco.trim(), uf: estado.trim(),
-          cep: cep.replace(/\D/g, ""), cpf_duplicado: cpfDuplicado, origem: "atendimento",
-          observacao: `Plano: ${planoVel} - ${planoPre} | Vencimento: Dia ${vencimento} | Cidade cobertura: ${cidade} | Bairro cobertura: ${bairro}`,
+          bairro: bairroCep || bairro,
+          cidade: cidadeEndereco.trim(),
+          uf: estado.trim(),
+          cep: cep.replace(/\D/g, ""),
+          cpf_duplicado: cpfDuplicado,
+          origem: "atendimento",
+          observacao: `Plano: ${planoVel}${planoPre ? ` - ${planoPre}` : ""} | Vencimento: Dia ${vencimento} | Cidade cobertura: ${cidade} | Bairro cobertura: ${bairro || bairroCep}`,
         }),
       })
       const result = await res.json()
@@ -237,7 +257,8 @@ export function AtendimentoForm() {
     setCidade(""); setBairro(""); setPlano(""); setVencimento(""); setAceitaTaxa(false)
     setCep(""); setLogradouro(""); setNumero(""); setComplemento("")
     setBairroCep(""); setCidadeEndereco(""); setEstado("")
-    setCpfDuplicado(false); setCpfStatus("idle"); setErrors({}); setSemCobertura(false)
+    setCpfDuplicado(false); setCpfStatus("idle"); setErrors({})
+    setCidadeManual(false); setPlanoManual(false); setPlanoTexto(""); setPlanoPrecoTexto("")
   }
 
   if (done) {
@@ -288,7 +309,7 @@ export function AtendimentoForm() {
           <Label required>WhatsApp</Label>
           <input type="tel" value={whatsapp} onChange={e => setWhatsapp(formatPhone(e.target.value))}
             placeholder="(21) 99999-9999" maxLength={15} className={inputClass(errors.whatsapp)} />
-          {errors.whatsapp && <p className="text-xs mt-1 font-medium" style={{ color: "var(--destructive)" }}>Informe DDD + número. Ex: (21) 99999-9999</p>}
+          {errors.whatsapp && <p className="text-xs mt-1 font-medium" style={{ color: "var(--destructive)" }}>Número de telefone inválido. Formato esperado: (XX) XXXX-XXXX ou (XX) 9XXXX-XXXX</p>}
         </div>
 
         <div>
@@ -299,6 +320,7 @@ export function AtendimentoForm() {
 
         <SectionTitle>Endereço e Plano</SectionTitle>
 
+        {/* CEP */}
         <div>
           <Label required>CEP</Label>
           <div className="relative max-w-[200px]">
@@ -312,130 +334,148 @@ export function AtendimentoForm() {
           </div>
         </div>
 
-        {cidadeEndereco && (
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Cidade</Label>
-              <input type="text" value={cidadeEndereco} onChange={e => setCidadeEndereco(e.target.value)} className={inputClass(false)} />
-            </div>
-            <div>
-              <Label>Bairro</Label>
-              <input type="text" value={bairroCep} onChange={e => setBairroCep(e.target.value)} className={inputClass(false)} />
-            </div>
-          </div>
-        )}
-
-        {cidadeEndereco && (
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label required>Logradouro</Label>
-              <input type="text" value={logradouro} onChange={e => setLogradouro(e.target.value)}
-                placeholder="Rua, Avenida..." className={inputClass(errors.logradouro)} />
-            </div>
-            <div>
-              <Label required>Número</Label>
-              <input id="at-numero" type="text" value={numero} onChange={e => setNumero(e.target.value)}
-                placeholder="Nº" className={inputClass(errors.numero)} />
-            </div>
-          </div>
-        )}
-
-        {cidadeEndereco && (
-          <div>
-            <Label>Complemento</Label>
-            <input type="text" value={complemento} onChange={e => setComplemento(e.target.value)}
-              placeholder="Apto, bloco, casa..." className={inputClass(false)} />
-          </div>
-        )}
-
-        {/* Aviso sem cobertura */}
-        {semCobertura && cidadeEndereco && (
-          <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50">
-            <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-[13px] font-semibold text-amber-700">Endereço fora da cobertura KN</p>
-              <p className="text-[12px] text-amber-600 mt-0.5">Selecione manualmente a cidade e bairro de cobertura abaixo.</p>
-            </div>
-          </div>
-        )}
-
-        {/* Selects de cobertura — aparecem sempre que cidade não foi autodetectada */}
-        {cidadeEndereco && semCobertura && (
+        {/* Cidade e bairro do endereço — editáveis */}
+        {cep.replace(/\D/g, "").length === 8 && (
           <>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Cidade</Label>
+                <input type="text" value={cidadeEndereco} onChange={e => setCidadeEndereco(e.target.value)}
+                  placeholder="Cidade" className={inputClass(false)} />
+              </div>
+              <div>
+                <Label>Bairro</Label>
+                <input type="text" value={bairroCep} onChange={e => setBairroCep(e.target.value)}
+                  placeholder="Bairro" className={inputClass(false)} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label required>Logradouro</Label>
+                <input type="text" value={logradouro} onChange={e => setLogradouro(e.target.value)}
+                  placeholder="Rua, Avenida..." className={inputClass(errors.logradouro)} />
+              </div>
+              <div>
+                <Label required>Número</Label>
+                <input id="at-numero" type="text" value={numero} onChange={e => setNumero(e.target.value)}
+                  placeholder="Nº" className={inputClass(errors.numero)} />
+              </div>
+            </div>
+
+            <div>
+              <Label>Complemento</Label>
+              <input type="text" value={complemento} onChange={e => setComplemento(e.target.value)}
+                placeholder="Apto, bloco, casa..." className={inputClass(false)} />
+            </div>
+
+            {/* Aviso fora de cobertura */}
+            {cidadeManual && (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50">
+                <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-[13px] font-semibold text-amber-700">Endereço fora da cobertura padrão</p>
+                  <p className="text-[12px] text-amber-600 mt-0.5">Selecione a cidade e bairro de cobertura manualmente.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Cidade de cobertura */}
             <div>
               <Label required>Cidade de cobertura</Label>
               <select value={cidade} onChange={e => { setCidade(e.target.value); setBairro(""); setPlano(""); setVencimento("") }}
                 className={cn(inputClass(errors.cidade), "cursor-pointer")}>
                 <option value="">Selecione a cidade</option>
-                {Object.keys(DATA).map(c => <option key={c} value={c}>{c}</option>)}
+                {cidades.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <div>
-              <Label required>Bairro de cobertura</Label>
-              <select value={bairro} onChange={e => { setBairro(e.target.value); setPlano(""); setVencimento("") }}
-                disabled={!cidade} className={cn(inputClass(errors.bairro), "cursor-pointer disabled:opacity-50")}>
-                <option value="">Selecione o bairro</option>
-                {bairros.map(b => <option key={b} value={b}>{b}</option>)}
-              </select>
-            </div>
+
+            {/* Bairro de cobertura */}
+            {cidade && (
+              <div>
+                <Label required>Bairro de cobertura</Label>
+                <select value={bairro} onChange={e => { setBairro(e.target.value); setPlano("") }}
+                  className={cn(inputClass(errors.bairro), "cursor-pointer")}>
+                  <option value="">Selecione o bairro</option>
+                  {bairros.map(b => <option key={b} value={b}>{b}</option>)}
+                  <option value="__outro__">Outro bairro (exceção)</option>
+                </select>
+              </div>
+            )}
+
+            {/* Bairro livre quando "Outro" */}
+            {bairro === "__outro__" && (
+              <div>
+                <Label required>Bairro (exceção)</Label>
+                <input type="text" value={planoTexto}
+                  onChange={e => setBairro("__outro__")}
+                  placeholder="Digite o bairro"
+                  className={inputClass(false)} />
+              </div>
+            )}
+
+            {/* Planos — select quando na lista, livre quando fora */}
+            {cidade && bairro && bairro !== "__outro__" && !planoManual && (
+              <div>
+                <Label required>Plano</Label>
+                <select value={plano} onChange={e => setPlano(e.target.value)}
+                  className={cn(inputClass(errors.plano), "cursor-pointer")}>
+                  <option value="">Selecione o plano</option>
+                  {planos.map(p => <option key={p.v} value={`${p.v} - ${p.p}`}>{p.v} — {p.p}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* Plano manual quando fora da lista */}
+            {(planoManual || bairro === "__outro__") && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label required>Velocidade do plano</Label>
+                  <input type="text" value={planoTexto} onChange={e => setPlanoTexto(e.target.value)}
+                    placeholder="Ex: 350MB" className={inputClass(errors.plano)} />
+                </div>
+                <div>
+                  <Label>Preço</Label>
+                  <input type="text" value={planoPrecoTexto} onChange={e => setPlanoPrecoTexto(e.target.value)}
+                    placeholder="Ex: R$ 120,00" className={inputClass(false)} />
+                </div>
+              </div>
+            )}
+
+            {/* Vencimento */}
+            {cidade && (
+              <div>
+                <Label required>Vencimento</Label>
+                <select value={vencimento} onChange={e => setVencimento(e.target.value)}
+                  className={cn(inputClass(errors.vencimento), "cursor-pointer")}>
+                  <option value="">Selecione</option>
+                  {vencimentos.map(v => <option key={v} value={v}>Dia {v}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* Taxa de instalação */}
+            {cidade && (
+              <div className={cn(
+                "flex items-start gap-3 p-4 rounded-xl border-[1.5px] transition-all cursor-pointer",
+                aceitaTaxa ? "border-primary bg-orange-50" : errors.taxa ? "border-destructive bg-red-50" : "border-border"
+              )} onClick={() => setAceitaTaxa(v => !v)}>
+                <div className="w-5 h-5 min-w-[20px] rounded border-[1.5px] flex items-center justify-center mt-0.5 transition-all"
+                  style={{ background: aceitaTaxa ? "var(--primary)" : "var(--input)", borderColor: aceitaTaxa ? "var(--primary)" : "var(--border)" }}>
+                  {aceitaTaxa && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>Taxa de instalação — R$ 150,00 via Pix</p>
+                  <p className="text-[12px] mt-0.5" style={{ color: "var(--muted-foreground)" }}>Cliente ciente e de acordo com a taxa de instalação</p>
+                </div>
+              </div>
+            )}
           </>
         )}
-
-        {/* Se bairro foi autodetectado mas não encontrou match exato de bairro */}
-        {cidadeEndereco && !semCobertura && cidade && !bairro && (
-          <div>
-            <Label required>Bairro de cobertura</Label>
-            <select value={bairro} onChange={e => { setBairro(e.target.value); setPlano(""); setVencimento("") }}
-              className={cn(inputClass(errors.bairro), "cursor-pointer")}>
-              <option value="">Selecione o bairro</option>
-              {bairros.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
-          </div>
-        )}
-
-        {/* Plano e Vencimento */}
-        {bairro && (
-          <>
-            <div>
-              <Label required>Plano</Label>
-              <select value={plano} onChange={e => setPlano(e.target.value)}
-                className={cn(inputClass(errors.plano), "cursor-pointer")}>
-                <option value="">Selecione o plano</option>
-                {planos.map(p => <option key={p.v} value={`${p.v} - ${p.p}`}>{p.v} — {p.p}</option>)}
-              </select>
-            </div>
-            <div>
-              <Label required>Vencimento</Label>
-              <select value={vencimento} onChange={e => setVencimento(e.target.value)}
-                className={cn(inputClass(errors.vencimento), "cursor-pointer")}>
-                <option value="">Selecione</option>
-                {vencimentos.map(v => <option key={v} value={v}>Dia {v}</option>)}
-              </select>
-            </div>
-          </>
-        )}
-
-        {/* Taxa de instalação */}
-        {bairro && (
-          <div className={cn(
-            "flex items-start gap-3 p-4 rounded-xl border-[1.5px] transition-all cursor-pointer",
-            aceitaTaxa ? "border-primary bg-orange-50" : errors.taxa ? "border-destructive bg-red-50" : "border-border"
-          )} onClick={() => setAceitaTaxa(v => !v)}>
-            <div className="w-5 h-5 min-w-[20px] rounded border-[1.5px] flex items-center justify-center mt-0.5 transition-all"
-              style={{ background: aceitaTaxa ? "var(--primary)" : "var(--input)", borderColor: aceitaTaxa ? "var(--primary)" : "var(--border)" }}>
-              {aceitaTaxa && (
-                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-            </div>
-            <div>
-              <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>Taxa de instalação — R$ 150,00 via Pix</p>
-              <p className="text-[12px] mt-0.5" style={{ color: "var(--muted-foreground)" }}>Cliente ciente e de acordo com a taxa de instalação</p>
-            </div>
-          </div>
-        )}
-
       </div>
 
       <div className="px-6 pb-6">

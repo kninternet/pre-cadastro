@@ -12,6 +12,8 @@ import { OtpVerification } from "./otp-verification"
 import { WelcomeModal } from "./welcome-modal"
 import { formatCPF, formatPhone, validateEmail, validateCPF, validatePhone, validateCEP } from "@/lib/formatters"
 import { trackStep1View, trackStep1Next, trackStep2Next, trackStep3Submit, trackLeadSuccess, trackLeadError, getBrowserContext } from "@/lib/analytics"
+import { DATA } from "@/lib/data"
+import { CIDADE_SLUG_TO_NOME, BAIRRO_SLUG_TO_NOME, PLANO_SLUG_TO_VELOCIDADE_PRECO, formatPlanoKey } from "@/lib/coverage-translation"
 
 type FlowState = "form" | "review" | "otp" | "done"
 
@@ -59,6 +61,41 @@ export function PreCadastroForm() {
     if (whatsappParam) setWhatsapp(formatPhone(whatsappParam))
     if (cpfParam) setCpf(formatCPF(cpfParam))
     if (emailParam) setEmail(emailParam)
+
+    // ── Handoff site-next (contratar.tsx) → pre-cadastro ─────────────────────
+    // A querystring chega com slugs próprios do site-next (ex: cidade=sao-goncalo,
+    // bairro=santa-catarina, plano=sg-350). Traduz para os nomes literais e a
+    // chave de plano usados internamente aqui, e só aplica se a combinação
+    // realmente existir em DATA — nunca aceita um slug não reconhecido.
+    const cidadeSlug = searchParams.get("cidade")
+    const bairroSlug = searchParams.get("bairro")
+    const planoSlug = searchParams.get("plano")
+    const vencimentoParam = searchParams.get("vencimento")
+
+    const cidadeNome = cidadeSlug ? CIDADE_SLUG_TO_NOME[cidadeSlug] : undefined
+    const bairroNome = bairroSlug ? BAIRRO_SLUG_TO_NOME[bairroSlug] : undefined
+
+    if (cidadeNome && bairroNome && DATA[cidadeNome]?.bairros[bairroNome]) {
+      setCidade(cidadeNome)
+      setBairro(bairroNome)
+
+      const planoInfo = planoSlug ? PLANO_SLUG_TO_VELOCIDADE_PRECO[planoSlug] : undefined
+      if (planoInfo) {
+        const planoKey = formatPlanoKey(planoInfo.velocidade, planoInfo.preco)
+        const planoExiste = DATA[cidadeNome].bairros[bairroNome].some(
+          (p) => `${p.v} - ${p.p}` === planoKey
+        )
+        if (planoExiste) setPlano(planoKey)
+      }
+
+      if (vencimentoParam && DATA[cidadeNome].vencimentos.includes(vencimentoParam)) {
+        setVencimento(vencimentoParam)
+      }
+    } else if (cidadeSlug || bairroSlug || planoSlug) {
+      console.warn("[HANDOFF SITE→CADASTRO] slug não reconhecido, seguindo sem pré-preencher:", {
+        cidadeSlug, bairroSlug, planoSlug,
+      })
+    }
   }, [searchParams])
 
   const validateStep = (step: number): boolean => {
