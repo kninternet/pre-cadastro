@@ -136,7 +136,7 @@ export function AtendimentoForm() {
     if (digits.length !== 11 || !validateCPF(value)) return
     setCpfStatus("checking")
     try {
-      const res = await fetch(`${BASE}/api/check-cpf?cpf=${digits}`)
+      const res = await fetch(`${BASE}/api/internal/check-cpf?cpf=${digits}`)
       const data = await res.json()
       if (data.found) { setCpfStatus("duplicate"); setCpfDuplicado(true); toast.warning("CPF já cadastrado no SGP") }
       else { setCpfStatus("ok"); setCpfDuplicado(false) }
@@ -155,7 +155,7 @@ export function AtendimentoForm() {
     if (digits.length === 8) {
       setLoadingCep(true)
       try {
-        const res = await fetch(`${BASE}/api/cep?cep=${digits}`)
+        const res = await fetch(`${BASE}/api/internal/cep?cep=${digits}`)
         const data = await res.json()
         if (!data.error) {
           setLogradouro(data.logradouro || "")
