@@ -39,16 +39,17 @@ function normalize(s: string) {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()
 }
 
-function matchCobertura(cidadeCep: string, bairroCep: string): { cidade: string; bairro: string } | null {
+// Tenta casar cidade/bairro digitados (ou vindos do CEP) com a árvore de cobertura real.
+// Retorna os planos e vencimentos daquele bairro quando há match exato; null quando não há.
+function matchCobertura(cidadeInput: string, bairroInput: string): { planos: typeof DATA[string]["bairros"][string]; vencimentos: string[] } | null {
   for (const cidade of Object.keys(DATA)) {
-    if (normalize(cidadeCep).includes(normalize(cidade)) || normalize(cidade).includes(normalize(cidadeCep))) {
+    if (normalize(cidadeInput) === normalize(cidade)) {
       const bairros = Object.keys(DATA[cidade].bairros)
       for (const bairro of bairros) {
-        if (normalize(bairroCep).includes(normalize(bairro)) || normalize(bairro).includes(normalize(bairroCep))) {
-          return { cidade, bairro }
+        if (normalize(bairroInput) === normalize(bairro)) {
+          return { planos: DATA[cidade].bairros[bairro], vencimentos: DATA[cidade].vencimentos ?? ["5", "20"] }
         }
       }
-      return { cidade, bairro: "" }
     }
   }
   return null
@@ -68,45 +69,36 @@ export function AtendimentoForm() {
   const [cpfDuplicado, setCpfDuplicado] = useState(false)
   const [cpfStatus, setCpfStatus] = useState<"idle"|"checking"|"ok"|"duplicate">("idle")
 
-  // Endereço — todos editáveis
+  // Endereço — todos editáveis. Cidade/Bairro aqui SÃO a fonte de verdade da cobertura;
+  // não existe seleção separada de "cidade/bairro de cobertura". Se o atendente editar
+  // esses campos, o valor final enviado ao SGP é o que estiver aqui — responsabilidade dele.
   const [cep, setCep] = useState("")
   const [logradouro, setLogradouro] = useState("")
   const [numero, setNumero] = useState("")
   const [complemento, setComplemento] = useState("")
-  const [bairroCep, setBairroCep] = useState("")
-  const [cidadeEndereco, setCidadeEndereco] = useState("")
+  const [bairro, setBairro] = useState("")
+  const [cidade, setCidade] = useState("")
   const [estado, setEstado] = useState("")
   const [loadingCep, setLoadingCep] = useState(false)
 
-  // Cobertura — auto mas editável
-  const [cidade, setCidade] = useState("")
-  const [bairro, setBairro] = useState("")
-  const [cidadeManual, setCidadeManual] = useState(false) // true quando fora da cobertura
-
-  // Plano — select quando na lista, texto livre quando fora
+  // Plano — select com os planos reais quando cidade/bairro batem com a cobertura mapeada;
+  // texto livre (Velocidade / Preço) quando não bate.
   const [plano, setPlano] = useState("")
-  const [planoManual, setPlanoManual] = useState(false)
-  const [planoTexto, setPlanoTexto] = useState("") // velocidade livre
-  const [planoPrecoTexto, setPlanoPrecoTexto] = useState("") // preço livre
-
+  const [planoTexto, setPlanoTexto] = useState("")       // velocidade livre, ex: "350MB"
+  const [planoPrecoTexto, setPlanoPrecoTexto] = useState("") // preço livre, ex: "R$ 120,00"
   const [vencimento, setVencimento] = useState("")
   const [aceitaTaxa, setAceitaTaxa] = useState(false)
 
-  const cidades = Object.keys(DATA)
-  const bairros = cidade ? Object.keys(DATA[cidade]?.bairros ?? {}) : []
-  const planos = (cidade && bairro && DATA[cidade]?.bairros[bairro]) ? DATA[cidade].bairros[bairro] : []
-  const vencimentos = cidade ? (DATA[cidade]?.vencimentos ?? []) : ["5", "20"]
+  const cobertura = matchCobertura(cidade, bairro)
+  const planoManual = !cobertura
+  const planos = cobertura?.planos ?? []
+  const vencimentos = cobertura?.vencimentos ?? ["5", "20"]
 
-  useEffect(() => { setPlano(""); setPlanoTexto(""); setPlanoPrecoTexto("") }, [bairro])
-
-  // Quando não há planos na lista, ativa modo manual
+  // Reseta plano/vencimento quando cidade ou bairro mudam (evita plano de um bairro
+  // ficando selecionado depois que o atendente edita o endereço)
   useEffect(() => {
-    if (cidade && bairro && planos.length === 0) {
-      setPlanoManual(true)
-    } else {
-      setPlanoManual(false)
-    }
-  }, [cidade, bairro, planos.length])
+    setPlano(""); setPlanoTexto(""); setPlanoPrecoTexto(""); setVencimento("")
+  }, [cidade, bairro])
 
   useEffect(() => {
     const n = searchParams.get("nome"); if (n) setNome(n)
@@ -114,22 +106,6 @@ export function AtendimentoForm() {
     const c = searchParams.get("cpf"); if (c) setCpf(formatCPF(c))
     const e = searchParams.get("email"); if (e) setEmail(e)
   }, [searchParams])
-
-  // Auto-detecta cobertura pelo CEP
-  useEffect(() => {
-    if (!cidadeEndereco) return
-    const match = matchCobertura(cidadeEndereco, bairroCep)
-    if (match) {
-      setCidadeManual(false)
-      setCidade(match.cidade)
-      setBairro(match.bairro)
-    } else {
-      setCidadeManual(true)
-      setCidade("")
-      setBairro("")
-    }
-    setPlano(""); setPlanoTexto(""); setPlanoPrecoTexto("")
-  }, [cidadeEndereco, bairroCep])
 
   const checkCpf = async (value: string) => {
     const digits = value.replace(/\D/g, "")
@@ -148,8 +124,7 @@ export function AtendimentoForm() {
     setCep(formatted)
     const digits = formatted.replace(/\D/g, "")
     if (digits.length < 8) {
-      setLogradouro(""); setBairroCep(""); setCidadeEndereco(""); setEstado("")
-      setCidade(""); setBairro(""); setCidadeManual(false)
+      setLogradouro(""); setBairro(""); setCidade(""); setEstado("")
       return
     }
     if (digits.length === 8) {
@@ -159,8 +134,8 @@ export function AtendimentoForm() {
         const data = await res.json()
         if (!data.error) {
           setLogradouro(data.logradouro || "")
-          setBairroCep(data.bairro || "")
-          setCidadeEndereco(data.cidade || "")
+          setBairro(data.bairro || "")
+          setCidade(data.cidade || "")
           setEstado(data.uf || "")
           if (data.complemento) setComplemento(data.complemento)
           setTimeout(() => document.getElementById("at-numero")?.focus(), 100)
@@ -181,10 +156,11 @@ export function AtendimentoForm() {
     if (nome.trim().length < 3)   e.nome = true
     if (!validatePhone(whatsapp)) e.whatsapp = true
     if (!validateEmail(email))    e.email = true
-    if (!validateCEP(cep))       e.cep = true
+    if (!validateCEP(cep))        e.cep = true
     if (!logradouro.trim())       e.logradouro = true
     if (!numero.trim())           e.numero = true
-    if (!cidade)                  e.cidade = true
+    if (!cidade.trim())           e.cidade = true
+    if (!bairro.trim())           e.bairro = true
     if (!vencimento)              e.vencimento = true
     if (!aceitaTaxa)              e.taxa = true
     if (planoManual) {
@@ -219,7 +195,7 @@ export function AtendimentoForm() {
       await fetch(`${BASE}/api/step2`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lead_id: leadId, cpf: cpf.replace(/\D/g, ""), cidade, bairro: bairro || bairroCep, plano: planoFinal, vencimento, aceita_taxa_instalacao: true, origem: "atendimento" }),
+        body: JSON.stringify({ lead_id: leadId, cpf: cpf.replace(/\D/g, ""), cidade, bairro, plano: planoFinal, vencimento, aceita_taxa_instalacao: true, origem: "atendimento" }),
       })
 
       const res = await fetch(`${BASE}/api/submit`, {
@@ -232,13 +208,13 @@ export function AtendimentoForm() {
           email: email.trim(),
           celular: whatsapp.replace(/\D/g, ""),
           logradouro: `${logradouro.trim()}, ${numero.trim()}${complemento ? ` - ${complemento}` : ""}`,
-          bairro: bairroCep || bairro,
-          cidade: cidadeEndereco.trim(),
+          bairro: bairro.trim(),
+          cidade: cidade.trim(),
           uf: estado.trim(),
           cep: cep.replace(/\D/g, ""),
           cpf_duplicado: cpfDuplicado,
           origem: "atendimento",
-          observacao: `Plano: ${planoVel}${planoPre ? ` - ${planoPre}` : ""} | Vencimento: Dia ${vencimento} | Cidade cobertura: ${cidade} | Bairro cobertura: ${bairro || bairroCep}`,
+          observacao: `Plano: ${planoVel}${planoPre ? ` - ${planoPre}` : ""} | Vencimento: Dia ${vencimento} | Cidade: ${cidade} | Bairro: ${bairro}${planoManual ? " | Fora da cobertura mapeada — plano informado manualmente" : ""}`,
         }),
       })
       const result = await res.json()
@@ -256,9 +232,8 @@ export function AtendimentoForm() {
     setCpf(""); setNome(""); setWhatsapp(""); setEmail("")
     setCidade(""); setBairro(""); setPlano(""); setVencimento(""); setAceitaTaxa(false)
     setCep(""); setLogradouro(""); setNumero(""); setComplemento("")
-    setBairroCep(""); setCidadeEndereco(""); setEstado("")
-    setCpfDuplicado(false); setCpfStatus("idle"); setErrors({})
-    setCidadeManual(false); setPlanoManual(false); setPlanoTexto(""); setPlanoPrecoTexto("")
+    setEstado(""); setCpfDuplicado(false); setCpfStatus("idle"); setErrors({})
+    setPlanoTexto(""); setPlanoPrecoTexto("")
   }
 
   if (done) {
@@ -334,19 +309,19 @@ export function AtendimentoForm() {
           </div>
         </div>
 
-        {/* Cidade e bairro do endereço — editáveis */}
+        {/* Cidade e bairro — únicos campos de cobertura. Preenchidos pelo CEP, sempre editáveis. */}
         {cep.replace(/\D/g, "").length === 8 && (
           <>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Cidade</Label>
-                <input type="text" value={cidadeEndereco} onChange={e => setCidadeEndereco(e.target.value)}
-                  placeholder="Cidade" className={inputClass(false)} />
+                <Label required>Cidade</Label>
+                <input type="text" value={cidade} onChange={e => setCidade(e.target.value)}
+                  placeholder="Cidade" className={inputClass(errors.cidade)} />
               </div>
               <div>
-                <Label>Bairro</Label>
-                <input type="text" value={bairroCep} onChange={e => setBairroCep(e.target.value)}
-                  placeholder="Bairro" className={inputClass(false)} />
+                <Label required>Bairro</Label>
+                <input type="text" value={bairro} onChange={e => setBairro(e.target.value)}
+                  placeholder="Bairro" className={inputClass(errors.bairro)} />
               </div>
             </div>
 
@@ -369,53 +344,19 @@ export function AtendimentoForm() {
                 placeholder="Apto, bloco, casa..." className={inputClass(false)} />
             </div>
 
-            {/* Aviso fora de cobertura */}
-            {cidadeManual && (
+            {/* Aviso informativo — sem ação, sem bloquear. Plano cai em modo manual automaticamente. */}
+            {cidade && bairro && planoManual && (
               <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50">
                 <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-[13px] font-semibold text-amber-700">Endereço fora da cobertura padrão</p>
-                  <p className="text-[12px] text-amber-600 mt-0.5">Selecione a cidade e bairro de cobertura manualmente.</p>
+                  <p className="text-[13px] font-semibold text-amber-700">Fora da cobertura mapeada</p>
+                  <p className="text-[12px] text-amber-600 mt-0.5">Informe a velocidade e o preço do plano manualmente abaixo.</p>
                 </div>
               </div>
             )}
 
-            {/* Cidade de cobertura */}
-            <div>
-              <Label required>Cidade de cobertura</Label>
-              <select value={cidade} onChange={e => { setCidade(e.target.value); setBairro(""); setPlano(""); setVencimento("") }}
-                className={cn(inputClass(errors.cidade), "cursor-pointer")}>
-                <option value="">Selecione a cidade</option>
-                {cidades.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-
-            {/* Bairro de cobertura */}
-            {cidade && (
-              <div>
-                <Label required>Bairro de cobertura</Label>
-                <select value={bairro} onChange={e => { setBairro(e.target.value); setPlano("") }}
-                  className={cn(inputClass(errors.bairro), "cursor-pointer")}>
-                  <option value="">Selecione o bairro</option>
-                  {bairros.map(b => <option key={b} value={b}>{b}</option>)}
-                  <option value="__outro__">Outro bairro (exceção)</option>
-                </select>
-              </div>
-            )}
-
-            {/* Bairro livre quando "Outro" */}
-            {bairro === "__outro__" && (
-              <div>
-                <Label required>Bairro (exceção)</Label>
-                <input type="text" value={planoTexto}
-                  onChange={e => setBairro("__outro__")}
-                  placeholder="Digite o bairro"
-                  className={inputClass(false)} />
-              </div>
-            )}
-
-            {/* Planos — select quando na lista, livre quando fora */}
-            {cidade && bairro && bairro !== "__outro__" && !planoManual && (
+            {/* Plano — select com planos reais quando cidade/bairro batem com a cobertura */}
+            {cidade && bairro && !planoManual && (
               <div>
                 <Label required>Plano</Label>
                 <select value={plano} onChange={e => setPlano(e.target.value)}
@@ -426,8 +367,8 @@ export function AtendimentoForm() {
               </div>
             )}
 
-            {/* Plano manual quando fora da lista */}
-            {(planoManual || bairro === "__outro__") && (
+            {/* Plano manual — velocidade e preço livres, fora da cobertura mapeada */}
+            {cidade && bairro && planoManual && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label required>Velocidade do plano</Label>
@@ -443,7 +384,7 @@ export function AtendimentoForm() {
             )}
 
             {/* Vencimento */}
-            {cidade && (
+            {cidade && bairro && (
               <div>
                 <Label required>Vencimento</Label>
                 <select value={vencimento} onChange={e => setVencimento(e.target.value)}
@@ -455,7 +396,7 @@ export function AtendimentoForm() {
             )}
 
             {/* Taxa de instalação */}
-            {cidade && (
+            {cidade && bairro && (
               <div className={cn(
                 "flex items-start gap-3 p-4 rounded-xl border-[1.5px] transition-all cursor-pointer",
                 aceitaTaxa ? "border-primary bg-orange-50" : errors.taxa ? "border-destructive bg-red-50" : "border-border"
