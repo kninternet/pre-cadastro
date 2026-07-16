@@ -5,7 +5,7 @@ import Image from "next/image"
 import { AtendimentoForm } from "@/components/atendimento/atendimento-form"
 import { Lock } from "lucide-react"
 
-const PIN_CORRETO = "7580"
+const PIN_CORRETO = process.env.NEXT_PUBLIC_ATENDIMENTO_PIN ?? ""
 
 export default function AtendimentoPage() {
   const [pin, setPin] = useState("")
