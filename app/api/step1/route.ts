@@ -7,7 +7,6 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
 export async function POST(request: Request) {
   let body: Record<string, string>
-
   try {
     body = await request.json()
   } catch {
@@ -17,6 +16,7 @@ export async function POST(request: Request) {
   const {
     session_id, nome, email, whatsapp,
     client_ip_address, client_user_agent, fbp, ga_client_id,
+    origem,
   } = body
 
   if (!session_id || !nome || !email || !whatsapp) {
@@ -30,8 +30,8 @@ export async function POST(request: Request) {
       `INSERT INTO leads (
         session_id,
         nome, email, whatsapp,
-        step_atual
-      ) VALUES ($1,$2,$3,$4,$5)
+        step_atual, origem
+      ) VALUES ($1,$2,$3,$4,$5,$6)
       RETURNING id`,
       [
         session_id,
@@ -39,6 +39,7 @@ export async function POST(request: Request) {
         email.trim().toLowerCase(),
         whatsapp.replace(/\D/g, ''),
         1,
+        origem ?? 'web',
       ]
     )
     leadId = rows[0].id
