@@ -76,11 +76,6 @@ export const DATA: Record<string, CityData> = {
   "Rio de Janeiro": {
     vencimentos: ["5", "20"],
     bairros: {
-      "Vila Santa Clara (Taquara)": [
-        { v: "100MB", p: "R$ 79,90" },
-        { v: "500MB", p: "R$ 99,90" },
-        { v: "800MB", p: "R$ 149,90" }
-      ],
       "Caju": [
         { v: "350MB", p: "R$ 120,00" },
         { v: "450MB", p: "R$ 150,00" },
@@ -176,11 +171,6 @@ const PLANO_MAP: Record<PlanoKey, number> = {
   "Rio de Janeiro|Cavalcanti|200MB":  209,
   "Rio de Janeiro|Cavalcanti|400MB":  210,
   "Rio de Janeiro|Cavalcanti|600MB":  211,
-
-  // Rio de Janeiro — Vila Santa Clara — POP 31
-  "Rio de Janeiro|Vila Santa Clara (Taquara)|100MB": 212,
-  "Rio de Janeiro|Vila Santa Clara (Taquara)|500MB": 213,
-  "Rio de Janeiro|Vila Santa Clara (Taquara)|800MB": 214,
 
   // Rio de Janeiro — Região Covanca (Tanque, Jacarepaguá, Pechincha, Taquara) — POP 42
   "Rio de Janeiro|Tanque|500MB":      1248,
