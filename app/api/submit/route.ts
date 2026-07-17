@@ -77,15 +77,15 @@ export async function POST(request: Request) {
   } = body
 
   const { logradouro, numero, complemento } = parseLogradouro(logradouroRaw ?? '')
-  const vencimento       = observacao?.match(/Vencimento:\s*Dia\s*(\S+)/)?.[1] ?? ''
+  const vencimento = observacao?.match(/Vencimento:\s*Dia\s*(\S+)/)?.[1] ?? ''
   const cidade_cobertura = observacao?.match(/Cidade cobertura:\s*([^|]+)/)?.[1]?.trim() ?? ''
   const bairro_cobertura = observacao?.match(/Bairro cobertura:\s*([^|]+)/)?.[1]?.trim() ?? ''
   const plano_velocidade = observacao?.match(/Plano:\s*(.+?)\s*-/)?.[1]?.trim() ?? ''
-  const plano_preco      = observacao?.match(/-\s*(.+?)\s*\|/)?.[1]?.trim() ?? ''
-  const planoValor       = parseFloat(plano_preco.replace(/[^\d,]/g, '').replace(',', '.') || '0')
+  const plano_preco = observacao?.match(/-\s*(.+?)\s*\|/)?.[1]?.trim() ?? ''
+  const planoValor = parseFloat(plano_preco.replace(/[^\d,]/g, '').replace(',', '.') || '0')
 
-  const dbLeadId  = lead_id ? parseInt(lead_id) : null
-  const cpfLimpo  = cpfcnpj.replace(/\D/g, '')
+  const dbLeadId = lead_id ? parseInt(lead_id) : null
+  const cpfLimpo = cpfcnpj.replace(/\D/g, '')
   const clientFlagCpfDup = cpf_duplicado === 'true' || cpf_duplicado === true as unknown as string
 
   // ── Re-verificação server-side do CPF no SGP ────────────────────────────────
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
   }
 
   // ── 2. SGP CRM — criar cliente (pular se CPF duplicado) ────────────────────
-  let sgpOk      = false
+  let sgpOk = false
   let sgpClienteId: number | null = null
   let sgpMessage = isCpfDup ? 'CPF duplicado — encaminhado ao atendimento' : 'Erro no cadastro'
 
@@ -136,12 +136,12 @@ export async function POST(request: Request) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            app:      process.env.SGP_APP ?? '',
-            token:    process.env.SGP_TOKEN ?? '',
+            app: process.env.SGP_APP ?? '',
+            token: process.env.SGP_TOKEN ?? '',
             nome,
             cpfcnpj: cpfLimpo,
             email,
-            celular:  sanitizePhoneForSGP(celular),
+            celular: sanitizePhoneForSGP(celular),
             endereco: enderecoSgp,
           }),
         },
@@ -152,8 +152,8 @@ export async function POST(request: Request) {
 
       if (sgpData.cliente_id) {
         sgpClienteId = sgpData.cliente_id as number
-        sgpOk        = true
-        sgpMessage   = 'Cliente criado com sucesso'
+        sgpOk = true
+        sgpMessage = 'Cliente criado com sucesso'
       } else {
         sgpMessage = String(
           (sgpData.errors as Record<string, string>)?.cpfcnpj ??
@@ -193,11 +193,11 @@ export async function POST(request: Request) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status:        isCpfDup ? false : sgpOk,
-          message:       sgpMessage,
+          status: isCpfDup ? false : sgpOk,
+          message: sgpMessage,
           cpf_duplicado: isCpfDup,
-          token:         token ?? '',
-          cliente_id:    sgpClienteId,
+          token: token ?? '',
+          cliente_id: sgpClienteId,
           ...body,
         }),
       },
@@ -220,6 +220,7 @@ export async function POST(request: Request) {
     }
   }
 
+  // ── 5. E-mail atendimento ──────────────────────────────────────────────────
   // ── 5. E-mail atendimento ──────────────────────────────────────────────────
   try {
     const now = new Date()
@@ -266,6 +267,7 @@ export async function POST(request: Request) {
     await mailer.sendMail({
       from: `"KN Internet - Base" <${process.env.SMTP_USER}>`,
       to: process.env.SMTP_USER,
+      cc: 'dev@kninternet.com.br',
       subject: `${isCpfDup ? 'CPF DUPLICADO — ' : ''}Novo cadastro — ${nome}`,
       html: `
         <h2>${isCpfDup ? 'CPF Duplicado — Requer atenção do atendimento' : 'Novo cadastro recebido'}</h2>
@@ -319,30 +321,30 @@ export async function POST(request: Request) {
 
   // ── 6. Meta CAPI ───────────────────────────────────────────────────────────
   const nomeParts = nome.trim().split(' ')
-  const eventId   = `kn_submit_${dbLeadId ?? session_id ?? Date.now()}`
+  const eventId = `kn_submit_${dbLeadId ?? session_id ?? Date.now()}`
 
   void sendCAPIEvent({
     eventName: 'CompleteRegistration',
     eventId,
     userData: {
       email,
-      phone:           `55${celular.replace(/\D/g, '')}`,
-      firstName:       nomeParts[0],
-      lastName:        nomeParts.length > 1 ? nomeParts[nomeParts.length - 1] : undefined,
-      city:            cidade_cobertura || cidade,
-      state:           uf,
-      zipCode:         cep,
-      country:         'br',
+      phone: `55${celular.replace(/\D/g, '')}`,
+      firstName: nomeParts[0],
+      lastName: nomeParts.length > 1 ? nomeParts[nomeParts.length - 1] : undefined,
+      city: cidade_cobertura || cidade,
+      state: uf,
+      zipCode: cep,
+      country: 'br',
       clientIpAddress: client_ip_address,
       clientUserAgent: client_user_agent,
       fbp,
     },
     customData: {
-      contentName:     `${plano_velocidade} — ${plano_preco}`,
+      contentName: `${plano_velocidade} — ${plano_preco}`,
       contentCategory: `${cidade_cobertura} – ${bairro_cobertura}`,
-      value:           planoValor,
-      currency:        'BRL',
-      status:          isCpfDup ? 'pending' : sgpOk ? 'success' : 'pending',
+      value: planoValor,
+      currency: 'BRL',
+      status: isCpfDup ? 'pending' : sgpOk ? 'success' : 'pending',
     },
   })
 
@@ -351,13 +353,13 @@ export async function POST(request: Request) {
     clientId: ga_client_id ?? session_id ?? String(dbLeadId),
     eventName: 'conversion',
     params: {
-      lead_id:    dbLeadId ?? 0,
-      kn_plano:   plano_velocidade,
-      kn_cidade:  cidade_cobertura,
-      kn_bairro:  bairro_cobertura,
+      lead_id: dbLeadId ?? 0,
+      kn_plano: plano_velocidade,
+      kn_cidade: cidade_cobertura,
+      kn_bairro: bairro_cobertura,
       sgp_status: isCpfDup ? 'cpf_duplicado' : sgpOk ? 'enviado' : 'erro',
-      value:      planoValor,
-      currency:   'BRL',
+      value: planoValor,
+      currency: 'BRL',
     },
   })
 
