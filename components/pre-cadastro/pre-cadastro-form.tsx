@@ -154,6 +154,7 @@ export function PreCadastroForm() {
               nome: nome.trim(),
               email: email.trim(),
               whatsapp: whatsapp.replace(/\D/g, ""),
+              origem: "web",
               ...ctx,
             }),
           })
@@ -265,7 +266,7 @@ export function PreCadastroForm() {
       observacao: `Plano: ${plano} | Vencimento: Dia ${vencimento} | Cidade cobertura: ${cidade} | Bairro cobertura: ${bairro}`,
       email: email.trim(),
       celular: whatsapp.replace(/\D/g, ""),
-      origem: "automacao_webchat",
+      origem: "web",
       ...(token && { token }),
       ...(leadId && { lead_id: String(leadId) }),
       ...ctx,

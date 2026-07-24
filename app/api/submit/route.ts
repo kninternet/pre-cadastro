@@ -134,6 +134,9 @@ export async function POST(request: Request) {
   if (!isCpfDup) {
     try {
       const sgpEndpoint = tipoPessoa === 'J' ? '/api/crm/cliente/J' : '/api/crm/cliente/F'
+      // Celular é opcional no endpoint PJ e o SGP só aceita 11 dígitos nele.
+      // Com 10 dígitos (fixo), omitimos o campo em vez de mandar valor rejeitado.
+      const celularSgp = sanitizePhoneForSGP(celular)
       const sgpPayload = tipoPessoa === 'J'
         ? {
             app: process.env.SGP_APP ?? '',
@@ -141,7 +144,7 @@ export async function POST(request: Request) {
             nome,
             cpfcnpj: cpfLimpo,
             email,
-            celular: sanitizePhoneForSGP(celular),
+            ...(celularSgp.length === 11 ? { celular: celularSgp } : {}),
             respempresa: nome,
             endereco: enderecoSgp,
           }
