@@ -70,19 +70,28 @@ export function Step2({
     setPlano("")
   }
 
+  // Durante a digitação: apenas dígitos, sem máscara (evita conflito de maxLength CPF vs CNPJ)
   const handleCpfCnpjChange = (value: string) => {
-    const formatted = formatCpfCnpj(value)
-    setCpf(formatted)
+    const digits = value.replace(/\D/g, "").slice(0, 14)
+    setCpf(digits)
     setShowDuplicateModal(false)
     setCpfDuplicado(false)
+    if (cpfStatus !== "idle") setCpfStatus("idle")
 
-    const digits = formatted.replace(/\D/g, "")
     const tipo = detectTipoPessoa(digits)
     if (tipo) setTipoPessoa(tipo)
+  }
 
+  // No blur: aplica máscara e dispara verificação de duplicidade
+  const handleCpfCnpjBlur = () => {
+    const digits = cpf.replace(/\D/g, "")
+    const tipo = detectTipoPessoa(digits)
     const isComplete = (tipo === 'F' && digits.length === 11) || (tipo === 'J' && digits.length === 14)
 
-    if (isComplete && validateCpfCnpj(formatted)) {
+    if (!isComplete) return
+    setCpf(formatCpfCnpj(digits))
+
+    if (validateCpfCnpj(digits)) {
       setCpfStatus("checking")
       fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/internal/check-cpf?cpf=${digits}`)
         .then(async r => {
@@ -99,14 +108,17 @@ export function Step2({
           }
         })
         .catch(() => setCpfStatus("idle"))
-    } else {
-      if (cpfStatus !== "idle") setCpfStatus("idle")
     }
   }
 
+  // Ao focar novamente: remove a máscara para edição livre
+  const handleCpfCnpjFocus = () => {
+    setCpf(cpf.replace(/\D/g, ""))
+  }
+
   const cpfLabel = tipoPessoa === 'J' ? 'CNPJ' : 'CPF'
-  const cpfPlaceholder = tipoPessoa === 'J' ? '00.000.000/0001-00' : '000.000.000-00'
-  const cpfMaxLength = tipoPessoa === 'J' ? 18 : 14
+  const cpfPlaceholder = 'CPF ou CNPJ'
+  const cpfMaxLength = 18 // CNPJ formatado (blur); durante digitação são no máx. 14 dígitos
   const duplicadoLabel = tipoPessoa === 'J' ? 'CNPJ já cadastrado' : 'CPF já cadastrado'
   const duplicadoDesc = tipoPessoa === 'J'
     ? 'Identificamos que este CNPJ já possui um cadastro na KN Internet.'
@@ -345,8 +357,11 @@ export function Step2({
                 <div className="relative">
                   <input
                     type="text"
+                    inputMode="numeric"
                     value={cpf}
                     onChange={(e) => handleCpfCnpjChange(e.target.value)}
+                    onBlur={handleCpfCnpjBlur}
+                    onFocus={handleCpfCnpjFocus}
                     placeholder={cpfPlaceholder}
                     maxLength={cpfMaxLength}
                     className={cn(
