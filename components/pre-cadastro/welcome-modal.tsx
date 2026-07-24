@@ -83,8 +83,8 @@ export function WelcomeModal() {
                 <FileText className="w-4 h-4" style={{ color: "var(--primary)" }} />
               </div>
               <div>
-                <p className="text-[14px] font-bold" style={{ color: "var(--foreground)" }}>Número do CPF</p>
-                <p className="text-[12px]" style={{ color: "var(--muted-foreground)" }}>Documento de identificação pessoal</p>
+                <p className="text-[14px] font-bold" style={{ color: "var(--foreground)" }}>Número do CPF ou CNPJ</p>
+                <p className="text-[12px]" style={{ color: "var(--muted-foreground)" }}>Para iniciarmos seu cadastro</p>
               </div>
             </div>
 
