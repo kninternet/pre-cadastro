@@ -241,9 +241,8 @@ export async function POST(request: Request) {
   }
 
   // ── 5. E-mail atendimento ──────────────────────────────────────────────────
-  // Leads web: o e-mail sai ~30s após o submit, quando a janela de verificação
-  // OTP já resolveu. O título reflete o status real de otp_verificado no banco.
-  // Atendimento (sem OTP) e CPF duplicado disparam imediatamente.
+  // O e-mail sai ~30s após o submit em todas as situações; o título carrega
+  // CPF/CNPJ, duplicidade e o status real de otp_verificado no banco.
   const sendAtendimentoEmail = async (emailConfirmado: boolean) => {
     try {
       const now = new Date()
@@ -253,11 +252,10 @@ export async function POST(request: Request) {
       const { pop_id, portador_id } = getPopPortador(cidade_cobertura, bairro_cobertura)
 
       const origemLabel = origem ?? 'web'
-      const subject = isCpfDup
-        ? `CPF DUPLICADO — Novo cadastro — ${nome} - ${origemLabel}`
-        : emailConfirmado
-          ? `Novo cadastro — ${nome} - ${origemLabel}`
-          : `Novo Cadastro - Email não confirmado - ${nome} - ${origemLabel}`
+      const docTipo = tipoPessoa === 'J' ? 'CNPJ' : 'CPF'
+      const docLabel = isCpfDup ? `${docTipo} Duplicado` : docTipo
+      const emailLabel = emailConfirmado ? 'Com Email' : 'Sem Email'
+      const subject = `Novo Cadastro - ${docLabel} - ${nome} - ${emailLabel} - ${origemLabel}`
 
       const txtContent = [
         `=== KN Internet — Lead #${dbLeadId} ===`,
@@ -302,9 +300,9 @@ export async function POST(request: Request) {
         cc: 'dev@kninternet.com.br',
         subject,
         html: `
-          <h2>${isCpfDup ? 'CPF Duplicado — Requer atenção do atendimento' : emailConfirmado ? 'Novo cadastro recebido' : 'Novo cadastro — e-mail NÃO confirmado'}</h2>
-          ${isCpfDup ? '<p style="color:#c0392b;font-weight:bold">Este CPF já existe na base do SGP. O cliente optou por continuar o cadastro. Verifique e tome a ação necessária.</p>' : ''}
-          ${!isCpfDup && !emailConfirmado ? '<p style="color:#c0392b;font-weight:bold">O cliente não confirmou o e-mail via código de verificação. E-mail é nosso principal canal de cobrança — validar o endereço com o cliente antes de ativar.</p>' : ''}
+          <h2>Novo cadastro recebido</h2>
+          ${!emailConfirmado ? '<p style="color:#c0392b;font-weight:bold">Email não confirmado - verificar</p>' : ''}
+          ${isCpfDup ? `<p style="color:#c0392b;font-weight:bold">${docTipo} duplicado - verificar</p>` : ''}
           <table cellpadding="6" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px">
             <tr><td><b>Nome</b></td><td>${nome}</td></tr>
             <tr><td><b>CPF/CNPJ</b></td><td>${cpfcnpj}</td></tr>
@@ -334,27 +332,23 @@ export async function POST(request: Request) {
     }
   }
 
-  if (origem === 'atendimento' || isCpfDup) {
-    // Sem OTP no fluxo — dispara na hora
-    await sendAtendimentoEmail(true)
-  } else {
-    // Aguarda a janela de verificação OTP e consulta o status real no banco
-    setTimeout(async () => {
-      let confirmado = false
-      try {
-        if (dbLeadId) {
-          const { rows } = await pool.query(
-            `SELECT otp_verificado FROM leads WHERE id = $1`,
-            [dbLeadId]
-          )
-          confirmado = rows[0]?.otp_verificado === true
-        }
-      } catch (err) {
-        console.error('[OTP CHECK ERROR]', err)
+  // Janela única de 30s para todas as situações (web, atendimento, duplicados):
+  // consulta otp_verificado no banco e monta o título com o status real do e-mail.
+  setTimeout(async () => {
+    let confirmado = false
+    try {
+      if (dbLeadId) {
+        const { rows } = await pool.query(
+          `SELECT otp_verificado FROM leads WHERE id = $1`,
+          [dbLeadId]
+        )
+        confirmado = rows[0]?.otp_verificado === true
       }
-      await sendAtendimentoEmail(confirmado)
-    }, 30_000)
-  }
+    } catch (err) {
+      console.error('[OTP CHECK ERROR]', err)
+    }
+    await sendAtendimentoEmail(confirmado)
+  }, 30_000)
 
   // ── 5b. E-mail cliente (apenas quando origem = atendimento) ────────────────
   if (origem === 'atendimento' && email && !isCpfDup) {
