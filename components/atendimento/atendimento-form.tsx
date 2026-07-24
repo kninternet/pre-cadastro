@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { Send, Loader2, CheckCircle2, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { formatCPF, formatPhone, formatCEP, validateEmail, validateCPF, validatePhone, validateCEP } from "@/lib/formatters"
+import { formatCpfCnpj, detectTipoPessoa, validateCpfCnpj, formatPhone, formatCEP, validateEmail, validatePhone, validateCEP } from "@/lib/formatters"
 import { DATA } from "@/lib/data"
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? ""
@@ -103,18 +103,20 @@ export function AtendimentoForm() {
   useEffect(() => {
     const n = searchParams.get("nome"); if (n) setNome(n)
     const w = searchParams.get("whatsapp"); if (w) setWhatsapp(formatPhone(w))
-    const c = searchParams.get("cpf"); if (c) setCpf(formatCPF(c))
+    const c = searchParams.get("cpf"); if (c) setCpf(formatCpfCnpj(c))
     const e = searchParams.get("email"); if (e) setEmail(e)
   }, [searchParams])
 
   const checkCpf = async (value: string) => {
     const digits = value.replace(/\D/g, "")
-    if (digits.length !== 11 || !validateCPF(value)) return
+    const isComplete = digits.length === 11 || digits.length === 14
+    if (!isComplete || !validateCpfCnpj(digits)) return
+    setCpf(formatCpfCnpj(digits))
     setCpfStatus("checking")
     try {
       const res = await fetch(`${BASE}/api/internal/check-cpf?cpf=${digits}`)
       const data = await res.json()
-      if (data.found) { setCpfStatus("duplicate"); setCpfDuplicado(true); toast.warning("CPF já cadastrado no SGP") }
+      if (data.found) { setCpfStatus("duplicate"); setCpfDuplicado(true); toast.warning("CPF/CNPJ já cadastrado no SGP") }
       else { setCpfStatus("ok"); setCpfDuplicado(false) }
     } catch { setCpfStatus("idle") }
   }
@@ -152,7 +154,7 @@ export function AtendimentoForm() {
 
   const validate = (): boolean => {
     const e: Record<string, boolean> = {}
-    if (!validateCPF(cpf))        e.cpf = true
+    if (!validateCpfCnpj(cpf))    e.cpf = true
     if (nome.trim().length < 3)   e.nome = true
     if (!validatePhone(whatsapp)) e.whatsapp = true
     if (!validateEmail(email))    e.email = true
@@ -264,15 +266,19 @@ export function AtendimentoForm() {
         <SectionTitle>Dados pessoais</SectionTitle>
 
         <div>
-          <Label required>CPF</Label>
-          <input type="text" value={cpf}
-            onChange={e => { const v = formatCPF(e.target.value); setCpf(v); setCpfStatus("idle"); setCpfDuplicado(false) }}
+          <Label required>CPF ou CNPJ</Label>
+          <input type="text" inputMode="numeric" value={cpf}
+            onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 14); setCpf(v); setCpfStatus("idle"); setCpfDuplicado(false) }}
             onBlur={e => checkCpf(e.target.value)}
-            placeholder="000.000.000-00" maxLength={14} className={inputClass(errors.cpf)} />
-          {errors.cpf && <p className="text-xs mt-1 font-medium" style={{ color: "var(--destructive)" }}>CPF inválido</p>}
+            onFocus={() => setCpf(cpf.replace(/\D/g, ""))}
+            placeholder="CPF ou CNPJ" maxLength={18} className={inputClass(errors.cpf)} />
+          {errors.cpf && <p className="text-xs mt-1 font-medium" style={{ color: "var(--destructive)" }}>CPF/CNPJ inválido</p>}
+          {detectTipoPessoa(cpf) === 'J' && cpf.replace(/\D/g, '').length >= 12 && (
+            <p className="text-xs mt-1 font-medium" style={{ color: "#2563eb" }}>Cadastro Pessoa Jurídica</p>
+          )}
           {cpfStatus === "checking" && <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>Verificando...</p>}
-          {cpfStatus === "duplicate" && <p className="text-xs mt-1 font-medium" style={{ color: "#f97316" }}>CPF já cadastrado no SGP</p>}
-          {cpfStatus === "ok" && <p className="text-xs mt-1 font-medium text-green-600">CPF disponível</p>}
+          {cpfStatus === "duplicate" && <p className="text-xs mt-1 font-medium" style={{ color: "#f97316" }}>CPF/CNPJ já cadastrado no SGP</p>}
+          {cpfStatus === "ok" && <p className="text-xs mt-1 font-medium text-green-600">CPF/CNPJ disponível</p>}
         </div>
 
         <div>
@@ -289,8 +295,9 @@ export function AtendimentoForm() {
 
         <div>
           <Label required>E-mail</Label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" className={inputClass(errors.email)} />
-          {errors.email && <p className="text-xs mt-1 font-medium" style={{ color: "var(--destructive)" }}>E-mail inválido</p>}
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" className={inputClass(errors.email || /[^\x00-\x7F]/.test(email))} />
+          {/[^\x00-\x7F]/.test(email) && <p className="text-xs mt-1 font-medium" style={{ color: "var(--destructive)" }}>E-mail não pode conter acentos ou caracteres especiais</p>}
+          {errors.email && !/[^\x00-\x7F]/.test(email) && <p className="text-xs mt-1 font-medium" style={{ color: "var(--destructive)" }}>E-mail inválido</p>}
         </div>
 
         <SectionTitle>Endereço e Plano</SectionTitle>

@@ -241,81 +241,119 @@ export async function POST(request: Request) {
   }
 
   // ── 5. E-mail atendimento ──────────────────────────────────────────────────
-  // ── 5. E-mail atendimento ──────────────────────────────────────────────────
-  try {
-    const now = new Date()
-    const timestamp = now.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
-    const velocidade = plano_velocidade?.match(/(\d+MB)/)?.[1] ?? ''
-    const planoId = getPlanoId(cidade_cobertura, bairro_cobertura, velocidade)
-    const { pop_id, portador_id } = getPopPortador(cidade_cobertura, bairro_cobertura)
+  // Leads web: o e-mail sai ~30s após o submit, quando a janela de verificação
+  // OTP já resolveu. O título reflete o status real de otp_verificado no banco.
+  // Atendimento (sem OTP) e CPF duplicado disparam imediatamente.
+  const sendAtendimentoEmail = async (emailConfirmado: boolean) => {
+    try {
+      const now = new Date()
+      const timestamp = now.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+      const velocidade = plano_velocidade?.match(/(\d+MB)/)?.[1] ?? ''
+      const planoId = getPlanoId(cidade_cobertura, bairro_cobertura, velocidade)
+      const { pop_id, portador_id } = getPopPortador(cidade_cobertura, bairro_cobertura)
 
-    const txtContent = [
-      `=== KN Internet — Lead #${dbLeadId} ===`,
-      `Data/hora: ${timestamp}`,
-      `Lead ID: ${dbLeadId ?? '—'}`,
-      `CPF duplicado: ${isCpfDup ? 'Sim' : 'Não'}`,
-      ``,
-      `--- DADOS PESSOAIS ---`,
-      `Nome: ${nome}`,
-      `CPF: ${cpfcnpj}`,
-      `E-mail: ${email}`,
-      `WhatsApp: ${celular}`,
-      ``,
-      `--- PLANO ---`,
-      `Cidade cobertura: ${cidade_cobertura}`,
-      `Bairro cobertura: ${bairro_cobertura}`,
-      `Plano: ${plano_velocidade} - ${plano_preco}`,
-      `Vencimento: Dia ${vencimento}`,
-      `Taxa de instalação: R$ 150,00 via Pix`,
-      `POP ID: ${pop_id}`,
-      `Portador ID: ${portador_id}`,
-      `Plano ID SGP: ${planoId}`,
-      ``,
-      `--- ENDEREÇO DE INSTALAÇÃO ---`,
-      `Logradouro: ${logradouro}, ${numero}${complemento ? ` - ${complemento}` : ''}`,
-      `Bairro: ${bairro}`,
-      `Cidade/UF: ${cidade} - ${uf}`,
-      `CEP: ${cep}`,
-      `Referência: suprimido`,
-      ``,
-      `--- RASTREAMENTO ---`,
-      `SGP Cliente ID: ${sgpClienteId ?? '—'}`,
-      `Session ID: ${session_id ?? '—'}`,
-      `GA4 Client ID: ${ga_client_id ?? '—'}`,
-    ].join('\n')
+      const origemLabel = origem ?? 'web'
+      const subject = isCpfDup
+        ? `CPF DUPLICADO — Novo cadastro — ${nome} - ${origemLabel}`
+        : emailConfirmado
+          ? `Novo cadastro — ${nome} - ${origemLabel}`
+          : `Novo Cadastro - Email não confirmado - ${nome} - ${origemLabel}`
 
-    await mailer.sendMail({
-      from: `"KN Internet - Base" <${process.env.SMTP_USER}>`,
-      to: process.env.SMTP_USER,
-      cc: 'dev@kninternet.com.br',
-      subject: `${isCpfDup ? 'CPF DUPLICADO — ' : ''}Novo cadastro — ${nome}`,
-      html: `
-        <h2>${isCpfDup ? 'CPF Duplicado — Requer atenção do atendimento' : 'Novo cadastro recebido'}</h2>
-        ${isCpfDup ? '<p style="color:#c0392b;font-weight:bold">Este CPF já existe na base do SGP. O cliente optou por continuar o cadastro. Verifique e tome a ação necessária.</p>' : ''}
-        <table cellpadding="6" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px">
-          <tr><td><b>Nome</b></td><td>${nome}</td></tr>
-          <tr><td><b>CPF</b></td><td>${cpfcnpj}</td></tr>
-          <tr><td><b>E-mail</b></td><td>${email}</td></tr>
-          <tr><td><b>WhatsApp</b></td><td>${celular}</td></tr>
-          <tr><td><b>Plano</b></td><td>${plano_velocidade} — ${plano_preco}</td></tr>
-          <tr><td><b>Bairro cobertura</b></td><td>${bairro_cobertura}</td></tr>
-          <tr><td><b>Cidade cobertura</b></td><td>${cidade_cobertura}</td></tr>
-          <tr><td><b>Vencimento</b></td><td>Dia ${vencimento}</td></tr>
-          <tr><td><b>SGP Cliente ID</b></td><td>${sgpClienteId ?? '—'}</td></tr>
-          <tr><td><b>SGP Status</b></td><td>${isCpfDup ? 'CPF duplicado' : sgpOk ? 'Cadastrado' : sgpMessage}</td></tr>
-          <tr><td><b>Lead ID</b></td><td>#${dbLeadId}</td></tr>
-        </table>
-      `,
-      attachments: [
-        {
-          filename: `lead-${dbLeadId}-${nome.replace(/\s+/g, '-').toLowerCase()}.txt`,
-          content: txtContent,
-          contentType: 'text/plain; charset=utf-8',
-        },
-      ],
-    })
-  } catch (err) {
-    console.error('[MAIL ERROR]', err)
+      const txtContent = [
+        `=== KN Internet — Lead #${dbLeadId} ===`,
+        `Data/hora: ${timestamp}`,
+        `Lead ID: ${dbLeadId ?? '—'}`,
+        `Origem: ${origem ?? 'web'}`,
+        `CPF duplicado: ${isCpfDup ? 'Sim' : 'Não'}`,
+        `E-mail confirmado (OTP): ${emailConfirmado ? 'Sim' : 'Não'}`,
+        ``,
+        `--- DADOS PESSOAIS ---`,
+        `Nome: ${nome}`,
+        `CPF/CNPJ: ${cpfcnpj}`,
+        `E-mail: ${email}`,
+        `WhatsApp: ${celular}`,
+        ``,
+        `--- PLANO ---`,
+        `Cidade cobertura: ${cidade_cobertura}`,
+        `Bairro cobertura: ${bairro_cobertura}`,
+        `Plano: ${plano_velocidade} - ${plano_preco}`,
+        `Vencimento: Dia ${vencimento}`,
+        `Taxa de instalação: R$ 150,00 via Pix`,
+        `POP ID: ${pop_id}`,
+        `Portador ID: ${portador_id}`,
+        `Plano ID SGP: ${planoId}`,
+        ``,
+        `--- ENDEREÇO DE INSTALAÇÃO ---`,
+        `Logradouro: ${logradouro}, ${numero}${complemento ? ` - ${complemento}` : ''}`,
+        `Bairro: ${bairro}`,
+        `Cidade/UF: ${cidade} - ${uf}`,
+        `CEP: ${cep}`,
+        `Referência: suprimido`,
+        ``,
+        `--- RASTREAMENTO ---`,
+        `SGP Cliente ID: ${sgpClienteId ?? '—'}`,
+        `Session ID: ${session_id ?? '—'}`,
+        `GA4 Client ID: ${ga_client_id ?? '—'}`,
+      ].join('\n')
+
+      await mailer.sendMail({
+        from: `"KN Internet - Base" <${process.env.SMTP_USER}>`,
+        to: process.env.SMTP_USER,
+        cc: 'dev@kninternet.com.br',
+        subject,
+        html: `
+          <h2>${isCpfDup ? 'CPF Duplicado — Requer atenção do atendimento' : emailConfirmado ? 'Novo cadastro recebido' : 'Novo cadastro — e-mail NÃO confirmado'}</h2>
+          ${isCpfDup ? '<p style="color:#c0392b;font-weight:bold">Este CPF já existe na base do SGP. O cliente optou por continuar o cadastro. Verifique e tome a ação necessária.</p>' : ''}
+          ${!isCpfDup && !emailConfirmado ? '<p style="color:#c0392b;font-weight:bold">O cliente não confirmou o e-mail via código de verificação. E-mail é nosso principal canal de cobrança — validar o endereço com o cliente antes de ativar.</p>' : ''}
+          <table cellpadding="6" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px">
+            <tr><td><b>Nome</b></td><td>${nome}</td></tr>
+            <tr><td><b>CPF/CNPJ</b></td><td>${cpfcnpj}</td></tr>
+            <tr><td><b>E-mail</b></td><td>${email}</td></tr>
+            <tr><td><b>E-mail confirmado</b></td><td>${emailConfirmado ? 'Sim ✓' : 'NÃO'}</td></tr>
+            <tr><td><b>WhatsApp</b></td><td>${celular}</td></tr>
+            <tr><td><b>Plano</b></td><td>${plano_velocidade} — ${plano_preco}</td></tr>
+            <tr><td><b>Bairro cobertura</b></td><td>${bairro_cobertura}</td></tr>
+            <tr><td><b>Cidade cobertura</b></td><td>${cidade_cobertura}</td></tr>
+            <tr><td><b>Vencimento</b></td><td>Dia ${vencimento}</td></tr>
+            <tr><td><b>SGP Cliente ID</b></td><td>${sgpClienteId ?? '—'}</td></tr>
+            <tr><td><b>SGP Status</b></td><td>${isCpfDup ? 'CPF duplicado' : sgpOk ? 'Cadastrado' : sgpMessage}</td></tr>
+            <tr><td><b>Origem</b></td><td>${origemLabel}</td></tr>
+            <tr><td><b>Lead ID</b></td><td>#${dbLeadId}</td></tr>
+          </table>
+        `,
+        attachments: [
+          {
+            filename: `lead-${dbLeadId}-${nome.replace(/\s+/g, '-').toLowerCase()}.txt`,
+            content: txtContent,
+            contentType: 'text/plain; charset=utf-8',
+          },
+        ],
+      })
+    } catch (err) {
+      console.error('[MAIL ERROR]', err)
+    }
+  }
+
+  if (origem === 'atendimento' || isCpfDup) {
+    // Sem OTP no fluxo — dispara na hora
+    await sendAtendimentoEmail(true)
+  } else {
+    // Aguarda a janela de verificação OTP e consulta o status real no banco
+    setTimeout(async () => {
+      let confirmado = false
+      try {
+        if (dbLeadId) {
+          const { rows } = await pool.query(
+            `SELECT otp_verificado FROM leads WHERE id = $1`,
+            [dbLeadId]
+          )
+          confirmado = rows[0]?.otp_verificado === true
+        }
+      } catch (err) {
+        console.error('[OTP CHECK ERROR]', err)
+      }
+      await sendAtendimentoEmail(confirmado)
+    }, 30_000)
   }
 
   // ── 5b. E-mail cliente (apenas quando origem = atendimento) ────────────────
