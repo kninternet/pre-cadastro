@@ -113,6 +113,19 @@ export const DATA: Record<string, CityData> = {
   }
 }
 
+// ── Vencimentos por bairro (exceções) — fallback: vencimentos da cidade ─────
+// Região Covanca (POP 42) opera com dias 5, 10 e 15 — diferente do padrão RJ (5 e 20)
+export const VENCIMENTOS_BAIRRO: Record<string, string[]> = {
+  "Rio de Janeiro|Tanque":      ["5", "10", "15"],
+  "Rio de Janeiro|Jacarepaguá": ["5", "10", "15"],
+  "Rio de Janeiro|Pechincha":   ["5", "10", "15"],
+  "Rio de Janeiro|Taquara":     ["5", "10", "15"],
+}
+
+export function getVencimentos(cidade: string, bairro: string): string[] {
+  return VENCIMENTOS_BAIRRO[`${cidade}|${bairro}`] ?? DATA[cidade]?.vencimentos ?? []
+}
+
 // ── Mapeamento POP + Portador + NAS por cidade/bairro ───────────────────────
 export interface PopPortador {
   pop_id: number

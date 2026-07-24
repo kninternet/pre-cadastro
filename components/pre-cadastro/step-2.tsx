@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Wifi, ArrowRight, ArrowLeft, Check, AlertTriangle } from "lucide-react"
 import { CardHeader } from "./card-header"
 import { SectionTitle } from "./section-title"
-import { DATA, Plan } from "@/lib/data"
+import { DATA, Plan, getVencimentos } from "@/lib/data"
 import { formatCpfCnpj, validateCpfCnpj, detectTipoPessoa } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
 
@@ -47,7 +47,7 @@ export function Step2({
 
   const bairros = cidade ? Object.keys(DATA[cidade]?.bairros || {}) : []
   const planos: Plan[] = cidade && bairro ? DATA[cidade]?.bairros[bairro] || [] : []
-  const vencimentos = cidade ? DATA[cidade]?.vencimentos || [] : []
+  const vencimentos = cidade && bairro ? getVencimentos(cidade, bairro) : []
   const showSummary = cidade && bairro && plano && vencimento
 
   const selectClass = (hasError: boolean) =>
@@ -68,6 +68,7 @@ export function Step2({
   const handleBairroChange = (value: string) => {
     setBairro(value)
     setPlano("")
+    setVencimento("")
   }
 
   // Durante a digitação: apenas dígitos, sem máscara (evita conflito de maxLength CPF vs CNPJ)
@@ -278,7 +279,7 @@ export function Step2({
           )}
 
           {/* Vencimento */}
-          {cidade && (
+          {cidade && bairro && (
             <div className="mb-8">
               <SectionTitle>Dia do vencimento</SectionTitle>
               <label className="text-[13px] font-semibold text-foreground flex items-center gap-1 mb-3">

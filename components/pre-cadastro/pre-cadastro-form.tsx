@@ -12,7 +12,7 @@ import { OtpVerification } from "./otp-verification"
 import { WelcomeModal } from "./welcome-modal"
 import { formatCPF, formatPhone, validateEmail, validateCPF, validatePhone, validateCEP, validateCpfCnpj } from "@/lib/formatters"
 import { trackStep1View, trackStep1Next, trackStep2Next, trackStep3Submit, trackLeadSuccess, trackLeadError, getBrowserContext } from "@/lib/analytics"
-import { DATA } from "@/lib/data"
+import { DATA, getVencimentos } from "@/lib/data"
 import { CIDADE_SLUG_TO_NOME, BAIRRO_SLUG_TO_NOME, PLANO_SLUG_TO_VELOCIDADE_PRECO, formatPlanoKey } from "@/lib/coverage-translation"
 
 type FlowState = "form" | "review" | "otp" | "done"
@@ -89,7 +89,7 @@ export function PreCadastroForm() {
         if (planoExiste) setPlano(planoKey)
       }
 
-      if (vencimentoParam && DATA[cidadeNome].vencimentos.includes(vencimentoParam)) {
+      if (vencimentoParam && getVencimentos(cidadeNome, bairroNome).includes(vencimentoParam)) {
         setVencimento(vencimentoParam)
       }
     } else if (cidadeSlug || bairroSlug || planoSlug) {

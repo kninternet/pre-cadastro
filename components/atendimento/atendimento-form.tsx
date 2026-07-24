@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { Send, Loader2, CheckCircle2, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatCpfCnpj, detectTipoPessoa, validateCpfCnpj, formatPhone, formatCEP, validateEmail, validatePhone, validateCEP } from "@/lib/formatters"
-import { DATA } from "@/lib/data"
+import { DATA, getVencimentos } from "@/lib/data"
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? ""
 
@@ -47,7 +47,7 @@ function matchCobertura(cidadeInput: string, bairroInput: string): { planos: typ
       const bairros = Object.keys(DATA[cidade].bairros)
       for (const bairro of bairros) {
         if (normalize(bairroInput) === normalize(bairro)) {
-          return { planos: DATA[cidade].bairros[bairro], vencimentos: DATA[cidade].vencimentos ?? ["5", "20"] }
+          return { planos: DATA[cidade].bairros[bairro], vencimentos: getVencimentos(cidade, bairro) }
         }
       }
     }
