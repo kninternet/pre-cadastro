@@ -5,7 +5,7 @@ import { Wifi, ArrowRight, ArrowLeft, Check, AlertTriangle } from "lucide-react"
 import { CardHeader } from "./card-header"
 import { SectionTitle } from "./section-title"
 import { DATA, Plan } from "@/lib/data"
-import { formatCPF, validateCPF } from "@/lib/formatters"
+import { formatCpfCnpj, validateCpfCnpj, detectTipoPessoa } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
 
 interface Step2Props {
@@ -23,6 +23,8 @@ interface Step2Props {
   setCpf: (value: string) => void
   cpfDuplicado: boolean
   setCpfDuplicado: (value: boolean) => void
+  tipoPessoa: 'F' | 'J'
+  setTipoPessoa: (value: 'F' | 'J') => void
   errors: Record<string, boolean>
   onNext: () => void
   onBack: () => void
@@ -36,6 +38,7 @@ export function Step2({
   aceitaTaxaInstalacao, setAceitaTaxaInstalacao,
   cpf, setCpf,
   cpfDuplicado, setCpfDuplicado,
+  tipoPessoa, setTipoPessoa,
   errors,
   onNext, onBack,
 }: Step2Props) {
@@ -67,19 +70,24 @@ export function Step2({
     setPlano("")
   }
 
-  const handleCpfChange = (value: string) => {
-    const formatted = formatCPF(value)
+  const handleCpfCnpjChange = (value: string) => {
+    const formatted = formatCpfCnpj(value)
     setCpf(formatted)
     setShowDuplicateModal(false)
     setCpfDuplicado(false)
 
     const digits = formatted.replace(/\D/g, "")
-    if (digits.length === 11 && validateCPF(formatted)) {
+    const tipo = detectTipoPessoa(digits)
+    if (tipo) setTipoPessoa(tipo)
+
+    const isComplete = (tipo === 'F' && digits.length === 11) || (tipo === 'J' && digits.length === 14)
+
+    if (isComplete && validateCpfCnpj(formatted)) {
       setCpfStatus("checking")
       fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/internal/check-cpf?cpf=${digits}`)
         .then(async r => {
           const data = await r.json()
-          if (!r.ok) throw new Error(data.message ?? "Erro ao validar CPF")
+          if (!r.ok) throw new Error(data.message ?? "Erro ao validar")
           return data
         })
         .then(data => {
@@ -96,9 +104,17 @@ export function Step2({
     }
   }
 
+  const cpfLabel = tipoPessoa === 'J' ? 'CNPJ' : 'CPF'
+  const cpfPlaceholder = tipoPessoa === 'J' ? '00.000.000/0001-00' : '000.000.000-00'
+  const cpfMaxLength = tipoPessoa === 'J' ? 18 : 14
+  const duplicadoLabel = tipoPessoa === 'J' ? 'CNPJ já cadastrado' : 'CPF já cadastrado'
+  const duplicadoDesc = tipoPessoa === 'J'
+    ? 'Identificamos que este CNPJ já possui um cadastro na KN Internet.'
+    : 'Identificamos que este CPF já possui um cadastro na KN Internet.'
+
   return (
     <>
-      {/* Modal CPF duplicado */}
+      {/* Modal duplicado */}
       {showDuplicateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
           <div
@@ -115,10 +131,11 @@ export function Step2({
 
               <div>
                 <h3 className="font-heading text-[18px] font-extrabold mb-1.5" style={{ color: "var(--foreground)" }}>
-                  CPF já cadastrado
+                  {duplicadoLabel}
                 </h3>
                 <p className="text-[14px] leading-relaxed" style={{ color: "var(--muted-foreground)" }}>
-                  Identificamos que este CPF já possui um cadastro na KN Internet.</p>
+                  {duplicadoDesc}
+                </p>
               </div>
 
               <div className="w-full flex flex-col gap-2.5">
@@ -148,7 +165,7 @@ export function Step2({
                     color: "var(--foreground)",
                   }}
                 >
-                  Alterar CPF
+                  Alterar {cpfLabel}
                 </button>
               </div>
             </div>
@@ -314,21 +331,24 @@ export function Step2({
             </div>
           )}
 
-          {/* CPF */}
+          {/* CPF / CNPJ */}
           {cidade && (
             <div className="mb-4">
               <SectionTitle>Identificação</SectionTitle>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[13px] font-semibold text-foreground flex items-center gap-1">
-                  CPF <span className="text-primary text-[0.9em]">*</span>
+                  CPF ou CNPJ <span className="text-primary text-[0.9em]">*</span>
                 </label>
+                <p className="text-[12px] text-muted-foreground -mt-0.5">
+                  Favor informar o CPF ou CNPJ para cadastro
+                </p>
                 <div className="relative">
                   <input
                     type="text"
                     value={cpf}
-                    onChange={(e) => handleCpfChange(e.target.value)}
-                    placeholder="000.000.000-00"
-                    maxLength={14}
+                    onChange={(e) => handleCpfCnpjChange(e.target.value)}
+                    placeholder={cpfPlaceholder}
+                    maxLength={cpfMaxLength}
                     className={cn(
                       "w-full h-[46px] px-3.5 bg-input border-[1.5px] border-border rounded-lg text-[15px] text-foreground transition-all outline-none",
                       "placeholder:text-muted-foreground placeholder:text-sm",
@@ -347,7 +367,10 @@ export function Step2({
                   )}
                 </div>
                 {errors.cpf && (
-                  <span className="text-xs font-medium text-destructive">CPF inválido</span>
+                  <span className="text-xs font-medium text-destructive">{cpfLabel} inválido</span>
+                )}
+                {tipoPessoa === 'J' && cpf.replace(/\D/g, '').length >= 3 && (
+                  <span className="text-xs font-medium text-blue-600">Cadastro Pessoa Jurídica</span>
                 )}
               </div>
             </div>

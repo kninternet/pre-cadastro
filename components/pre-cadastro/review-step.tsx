@@ -76,7 +76,11 @@ export function ReviewStep({
   onConfirm, onBack, onEditStep, isSubmitting,
 }: ReviewStepProps) {
   const enderecoCompleto = [logradouro, numero, complemento].filter(Boolean).join(", ")
-  const cpfFormatado = cpf.length === 11 ? `${cpf.slice(0, 3)}.***.***-${cpf.slice(9)}` : cpf
+  const cpfFormatado =
+    cpf.length === 11 ? `${cpf.slice(0, 3)}.***.***-${cpf.slice(9)}` :
+    cpf.length === 14 ? `${cpf.slice(0, 2)}.***.***/****-${cpf.slice(12)}` :
+    cpf
+  const docLabel = cpf.length === 14 ? "CNPJ" : "CPF"
   const whatsappFormatado = whatsapp.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
   const cepFormatado = cep.replace(/(\d{5})(\d{3})/, "$1-$2")
 
@@ -105,7 +109,7 @@ export function ReviewStep({
           <Row label="Nome" value={nome} />
           <Row label="E-mail" value={email} />
           <Row label="WhatsApp" value={whatsappFormatado} />
-          <Row label="CPF" value={cpfFormatado} />
+          <Row label={docLabel} value={cpfFormatado} />
         </Section>
 
         {/* Plano */}

@@ -10,6 +10,7 @@ import { useState } from "react"
 
 interface Step3Props {
   cidade: string
+  tipoPessoa: 'F' | 'J'
   cep: string
   setCep: (value: string) => void
   logradouro: string
@@ -33,6 +34,7 @@ interface Step3Props {
 
 export function Step3({
   cidade,
+  tipoPessoa,
   cep, setCep,
   logradouro, setLogradouro,
   numero, setNumero,
@@ -46,6 +48,8 @@ export function Step3({
 }: Step3Props) {
   const [loadingCep, setLoadingCep] = useState(false)
   const [cityMismatch, setCityMismatch] = useState<string | null>(null)
+
+  const isPJ = tipoPessoa === 'J'
 
   const inputClass = (hasError: boolean, readOnly = false) =>
     cn(
@@ -111,8 +115,8 @@ export function Step3({
       <CardHeader
         icon={MapPin}
         badge="Endereço"
-        title="Endereço de Instalação"
-        description="Informe o endereço onde a internet será instalada"
+        title={isPJ ? "Endereço da Empresa" : "Endereço de Instalação"}
+        description={isPJ ? "Informe o endereço onde a internet será instalada" : "Informe o endereço onde a internet será instalada"}
       />
 
       <div className="p-6 md:p-8">
@@ -167,7 +171,7 @@ export function Step3({
             <div className="grid grid-cols-[1fr_auto] md:grid-cols-[3fr_1fr] gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[13px] font-semibold text-foreground flex items-center gap-1">
-                  Rua / Logradouro <span className="text-primary text-[0.9em]">*</span>
+                  {isPJ ? 'Logradouro' : 'Rua / Logradouro'} <span className="text-primary text-[0.9em]">*</span>
                 </label>
                 <input type="text" value={logradouro} onChange={(e) => setLogradouro(e.target.value)}
                   placeholder="Nome da rua" className={inputClass(errors.logradouro)} />
@@ -228,7 +232,7 @@ export function Step3({
             {isSubmitting ? (
               <><Loader2 className="w-5 h-5 animate-spin-slow" /> Enviando...</>
             ) : (
-              <><Send className="w-5 h-5" /> Enviar Pré-Cadastro</>
+              <><Send className="w-5 h-5" /> {isPJ ? 'Enviar Pré-Cadastro PJ' : 'Enviar Pré-Cadastro'}</>
             )}
           </button>
         </div>

@@ -10,7 +10,7 @@ import { Step3 } from "./step-3"
 import { ReviewStep } from "./review-step"
 import { OtpVerification } from "./otp-verification"
 import { WelcomeModal } from "./welcome-modal"
-import { formatCPF, formatPhone, validateEmail, validateCPF, validatePhone, validateCEP } from "@/lib/formatters"
+import { formatCPF, formatPhone, validateEmail, validateCPF, validatePhone, validateCEP, validateCpfCnpj } from "@/lib/formatters"
 import { trackStep1View, trackStep1Next, trackStep2Next, trackStep3Submit, trackLeadSuccess, trackLeadError, getBrowserContext } from "@/lib/analytics"
 import { DATA } from "@/lib/data"
 import { CIDADE_SLUG_TO_NOME, BAIRRO_SLUG_TO_NOME, PLANO_SLUG_TO_VELOCIDADE_PRECO, formatPlanoKey } from "@/lib/coverage-translation"
@@ -40,6 +40,7 @@ export function PreCadastroForm() {
   const [aceitaTaxaInstalacao, setAceitaTaxaInstalacao] = useState(false)
   const [cpf, setCpf] = useState("")
   const [cpfDuplicado, setCpfDuplicado] = useState(false)
+  const [tipoPessoa, setTipoPessoa] = useState<'F' | 'J'>('F')
 
   // ── Step 3 — Endereço ──────────────────────────────────────────────────────
   const [cep, setCep] = useState("")
@@ -114,7 +115,7 @@ export function PreCadastroForm() {
       if (!plano) { newErrors.plano = true; isValid = false }
       if (!vencimento) { newErrors.vencimento = true; isValid = false }
       if (!aceitaTaxaInstalacao) { newErrors.aceitaTaxaInstalacao = true; isValid = false }
-      if (!validateCPF(cpf)) { newErrors.cpf = true; isValid = false }
+      if (!validateCpfCnpj(cpf)) { newErrors.cpf = true; isValid = false }
     }
 
     if (step === 3) {
@@ -400,6 +401,7 @@ export function PreCadastroForm() {
             aceitaTaxaInstalacao={aceitaTaxaInstalacao} setAceitaTaxaInstalacao={setAceitaTaxaInstalacao}
             cpf={cpf} setCpf={setCpf}
             cpfDuplicado={cpfDuplicado} setCpfDuplicado={setCpfDuplicado}
+            tipoPessoa={tipoPessoa} setTipoPessoa={setTipoPessoa}
             errors={errors}
             onNext={() => handleStepNext(3)}
             onBack={backFromStep2}
@@ -409,6 +411,7 @@ export function PreCadastroForm() {
         {currentStep === 3 && (
           <Step3
             cidade={cidade}
+            tipoPessoa={tipoPessoa}
             cep={cep} setCep={setCep}
             logradouro={logradouro} setLogradouro={setLogradouro}
             numero={numero} setNumero={setNumero}

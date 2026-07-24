@@ -128,14 +128,24 @@ export async function POST(request: Request) {
     uf, pais: 'BR', pontoreferencia: 'suprimido',
   }
 
+  // Detecta PF (11 dígitos) ou PJ (14 dígitos)
+  const tipoPessoa = cpfLimpo.length === 14 ? 'J' : 'F'
+
   if (!isCpfDup) {
     try {
-      const sgpRes = await fetchWithTimeout(
-        `${process.env.SGP_BASE_URL ?? 'https://netecom.sgplocal.com.br'}/api/crm/cliente/F`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+      const sgpEndpoint = tipoPessoa === 'J' ? '/api/crm/cliente/J' : '/api/crm/cliente/F'
+      const sgpPayload = tipoPessoa === 'J'
+        ? {
+            app: process.env.SGP_APP ?? '',
+            token: process.env.SGP_TOKEN ?? '',
+            nome,
+            cpfcnpj: cpfLimpo,
+            email,
+            celular: sanitizePhoneForSGP(celular),
+            respempresa: nome,
+            endereco: enderecoSgp,
+          }
+        : {
             app: process.env.SGP_APP ?? '',
             token: process.env.SGP_TOKEN ?? '',
             nome,
@@ -143,7 +153,14 @@ export async function POST(request: Request) {
             email,
             celular: sanitizePhoneForSGP(celular),
             endereco: enderecoSgp,
-          }),
+          }
+
+      const sgpRes = await fetchWithTimeout(
+        `${process.env.SGP_BASE_URL ?? 'https://netecom.sgplocal.com.br'}${sgpEndpoint}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sgpPayload),
         },
         8000
       )
