@@ -3,13 +3,14 @@ import { Inter, Sora } from 'next/font/google'
 import { Toaster } from 'sonner'
 import Script from 'next/script'
 import './globals.css'
+import { CookieConsent } from '@/components/cookie-consent'
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
 })
 
-const sora = Sora({ 
+const sora = Sora({
   subsets: ['latin'],
   variable: '--font-sora',
 })
@@ -83,6 +84,26 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`${inter.variable} ${sora.variable} scroll-smooth`}>
       <head>
+        {/* ── Google Consent Mode v2 — DEVE vir ANTES do GTM e do Pixel ──
+            Tudo negado por padrão. O banner (CookieConsent) dispara o update
+            quando o usuário decide. security_storage/functionality permanecem
+            granted por serem essenciais. */}
+        <Script id="consent-mode-default" strategy="beforeInteractive">{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('consent', 'default', {
+            'ad_storage': 'denied',
+            'ad_user_data': 'denied',
+            'ad_personalization': 'denied',
+            'analytics_storage': 'denied',
+            'functionality_storage': 'granted',
+            'security_storage': 'granted',
+            'wait_for_update': 500
+          });
+          // Respeita navegadores com "Do Not Track" ativado
+          gtag('set', 'ads_data_redaction', true);
+        `}</Script>
+
         {/* ── Google Tag Manager ── */}
         <Script id="gtm-head" strategy="beforeInteractive">{`
           (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -92,7 +113,8 @@ export default function RootLayout({
           })(window,document,'script','dataLayer','${GTM_ID}');
         `}</Script>
 
-        {/* ── Meta Pixel ── */}
+        {/* ── Meta Pixel — inicializa mas represa o rastreamento até consentimento ──
+            fbq('consent','revoke') impede envio de eventos até o banner conceder. */}
         <Script id="meta-pixel" strategy="afterInteractive">{`
           !function(f,b,e,v,n,t,s)
           {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -102,8 +124,8 @@ export default function RootLayout({
           t.src=v;s=b.getElementsByTagName(e)[0];
           s.parentNode.insertBefore(t,s)}(window, document,'script',
           'https://connect.facebook.net/en_US/fbevents.js');
+          fbq('consent', 'revoke');
           fbq('init', '${META_PIXEL_ID}');
-          fbq('track', 'PageView');
         `}</Script>
         <noscript>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -130,6 +152,7 @@ export default function RootLayout({
 
         {children}
         <Toaster position="top-right" richColors />
+        <CookieConsent metaPixelId={META_PIXEL_ID} />
       </body>
     </html>
   )
