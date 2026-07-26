@@ -4,6 +4,12 @@ import { useEffect, useState, useCallback } from "react"
 import { Wifi, X, FileText, MapPin } from "lucide-react"
 
 const STORAGE_KEY = "kn_welcome_shown"
+// Evento que o banner de cookies escuta para só aparecer depois deste modal fechar
+const WELCOME_DONE_EVENT = "kn:welcome-done"
+
+function signalWelcomeDone() {
+  try { window.dispatchEvent(new Event(WELCOME_DONE_EVENT)) } catch {}
+}
 
 export function WelcomeModal() {
   const [open, setOpen] = useState(false)
@@ -13,12 +19,16 @@ export function WelcomeModal() {
     if (!alreadyShown) {
       const t = setTimeout(() => setOpen(true), 400)
       return () => clearTimeout(t)
+    } else {
+      // Modal não vai abrir (já visto) — libera o banner de cookies de imediato
+      signalWelcomeDone()
     }
   }, [])
 
   const handleClose = useCallback(() => {
     localStorage.setItem(STORAGE_KEY, "1")
     setOpen(false)
+    signalWelcomeDone()
   }, [])
 
   useEffect(() => {
