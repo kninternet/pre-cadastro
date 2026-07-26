@@ -254,8 +254,9 @@ export async function POST(request: Request) {
       const origemLabel = origem ?? 'web'
       const docTipo = tipoPessoa === 'J' ? 'CNPJ' : 'CPF'
       const docLabel = isCpfDup ? `${docTipo} Duplicado` : docTipo
-      const emailLabel = emailConfirmado ? 'Com Email' : 'Sem Email'
-      const subject = `Novo Cadastro - ${docLabel} - ${nome} - ${emailLabel} - ${origemLabel}`
+      // Atendimento não passa por OTP — nunca sinaliza. Web sem OTP: "OTP = False" ao fim.
+      const otpFlag = origem !== 'atendimento' && !emailConfirmado ? ' - OTP = False' : ''
+      const subject = `Novo Cadastro - ${docLabel} - ${nome} - ${origemLabel}${otpFlag}`
 
       const txtContent = [
         `=== KN Internet — Lead #${dbLeadId} ===`,
@@ -301,8 +302,6 @@ export async function POST(request: Request) {
         subject,
         html: `
           <h2>Novo cadastro recebido</h2>
-          ${!emailConfirmado ? '<p style="color:#c0392b;font-weight:bold">Email não confirmado - verificar</p>' : ''}
-          ${isCpfDup ? `<p style="color:#c0392b;font-weight:bold">${docTipo} duplicado - verificar</p>` : ''}
           <table cellpadding="6" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px">
             <tr><td><b>Nome</b></td><td>${nome}</td></tr>
             <tr><td><b>CPF/CNPJ</b></td><td>${cpfcnpj}</td></tr>
