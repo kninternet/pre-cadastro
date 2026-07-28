@@ -56,11 +56,11 @@ export default function PipelinePage() {
   }, [autenticado, fetchLeads])
 
   const handlePin = (value: string) => {
-    const clean = value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6)
+    const clean = value.replace(/\D/g, "").slice(0, 4)
     setPin(clean)
     setErro(false)
-    if (clean.length === 6) {
-      if (clean.toUpperCase() === PIN_CORRETO.toUpperCase()) {
+    if (clean.length === 4) {
+      if (clean === PIN_CORRETO) {
         setAutenticado(true)
       } else {
         setErro(true)
@@ -108,15 +108,15 @@ export default function PipelinePage() {
 
             <input
               type="password"
-              maxLength={6}
+              maxLength={4}
               value={pin}
               onChange={e => handlePin(e.target.value)}
-              placeholder="• • • • • •"
+              placeholder="• • • •"
               autoFocus
-              className="w-full h-[54px] text-center text-[24px] tracking-[0.4em] font-bold rounded-xl border-[1.5px] outline-none transition-all"
+              className="w-full h-[54px] text-center text-[24px] tracking-[0.5em] font-bold rounded-xl border-[1.5px] outline-none transition-all"
               style={{
                 background: "var(--input)",
-                borderColor: erro ? "var(--destructive)" : pin.length === 6 ? "var(--primary)" : "var(--border)",
+                borderColor: erro ? "var(--destructive)" : pin.length === 4 ? "var(--primary)" : "var(--border)",
                 color: "var(--foreground)",
               }}
             />
