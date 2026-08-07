@@ -7,7 +7,6 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
 export async function POST(request: Request) {
   let body: Record<string, string>
-
   try {
     body = await request.json()
   } catch {
@@ -53,13 +52,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: 'error', message: 'Erro ao salvar Step 2' }, { status: 500 })
   }
 
+  // ── 1b. Busca dados do step1 (nome, email, whatsapp) para elevar o Match Quality do CAPI ──
+  let nome = ''
+  let email = ''
+  let whatsapp = ''
+  try {
+    const { rows } = await pool.query(
+      `SELECT nome, email, whatsapp FROM leads WHERE id = $1`,
+      [parseInt(lead_id)]
+    )
+    if (rows[0]) {
+      nome = rows[0].nome ?? ''
+      email = rows[0].email ?? ''
+      whatsapp = rows[0].whatsapp ?? ''
+    }
+  } catch (err) {
+    console.error('[STEP2 LEAD FETCH ERROR]', err)
+    // Segue sem esses dados — não bloqueia o fluxo, só reduz o Match Quality
+  }
+
   const eventId = `kn_step2_${lead_id}`
+  const nomeParts = nome.trim().split(' ')
 
   // ── 2. Meta CAPI — InitiateCheckout ───────────────────────────────────────
   void sendCAPIEvent({
     eventName: 'InitiateCheckout',
     eventId,
     userData: {
+      email: email || undefined,
+      phone: whatsapp ? `55${whatsapp.replace(/\D/g, '')}` : undefined,
+      firstName: nomeParts[0] || undefined,
+      lastName: nomeParts.length > 1 ? nomeParts[nomeParts.length - 1] : undefined,
+      country: 'br',
       clientIpAddress: client_ip_address,
       clientUserAgent: client_user_agent,
       fbp,
