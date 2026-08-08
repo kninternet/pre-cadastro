@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     session_id, nome, email, whatsapp,
     client_ip_address, client_user_agent, fbp, ga_client_id,
     origem,
+    utm_source, utm_medium, utm_campaign, utm_content, utm_term,
   } = body
 
   if (!session_id || !nome || !email || !whatsapp) {
@@ -30,8 +31,9 @@ export async function POST(request: Request) {
       `INSERT INTO leads (
         session_id,
         nome, email, whatsapp,
-        step_atual, origem
-      ) VALUES ($1,$2,$3,$4,$5,$6)
+        step_atual, origem,
+        utm_source, utm_medium, utm_campaign, utm_content, utm_term
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
       RETURNING id`,
       [
         session_id,
@@ -40,6 +42,11 @@ export async function POST(request: Request) {
         whatsapp.replace(/\D/g, ''),
         1,
         origem ?? 'web',
+        utm_source ?? null,
+        utm_medium ?? null,
+        utm_campaign ?? null,
+        utm_content ?? null,
+        utm_term ?? null,
       ]
     )
     leadId = rows[0].id
