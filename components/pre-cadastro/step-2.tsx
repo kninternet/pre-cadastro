@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Wifi, ArrowRight, ArrowLeft, Check, AlertTriangle } from "lucide-react"
 import { CardHeader } from "./card-header"
 import { SectionTitle } from "./section-title"
-import { DATA, Plan, getVencimentos } from "@/lib/data"
+import { DATA, Plan, getVencimentos, getInstalacao } from "@/lib/data"
 import { formatCpfCnpj, validateCpfCnpj, detectTipoPessoa } from "@/lib/formatters"
 import { cn } from "@/lib/utils"
 
@@ -49,6 +49,10 @@ export function Step2({
   const planos: Plan[] = cidade && bairro ? DATA[cidade]?.bairros[bairro] || [] : []
   const vencimentos = cidade && bairro ? getVencimentos(cidade, bairro) : []
   const showSummary = cidade && bairro && plano && vencimento
+
+  // Taxa de instalação dinâmica (POP 42 = R$50 + mensalidade, demais = R$150)
+  const planoPreco = plano ? plano.split(" - ")[1]?.trim() : undefined
+  const instalacao = cidade && bairro ? getInstalacao(cidade, bairro, planoPreco) : null
 
   const selectClass = (hasError: boolean) =>
     cn(
@@ -332,8 +336,13 @@ export function Step2({
                 </div>
                 <span className="text-[13px] text-foreground/80 leading-relaxed">
                   Estou ciente de que será cobrada uma{" "}
-                  <strong className="text-foreground">taxa de instalação de R$&nbsp;150,00</strong>
-                  {" "}paga via <strong className="text-foreground">Pix</strong> no momento da instalação.
+                  <strong className="text-foreground">taxa de instalação de {instalacao?.descricao ?? "R$ 150,00"}</strong>
+                  {" "}paga via <strong className="text-foreground">Pix ou dinheiro</strong> no momento da instalação.
+                  {instalacao?.incluiMensalidade && (
+                    <span className="block mt-1 text-[12px] text-primary font-medium">
+                      * Inclui R$&nbsp;50,00 de taxa + primeira mensalidade do plano
+                    </span>
+                  )}
                 </span>
               </label>
               {errors.aceitaTaxaInstalacao && !aceitaTaxaInstalacao && (

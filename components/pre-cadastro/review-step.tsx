@@ -1,6 +1,7 @@
 "use client"
 
-import { CheckCircle2, ArrowLeft, Send, Loader2, Edit2, Check } from "lucide-react"
+import { CheckCircle2, ArrowLeft, Send, Loader2, Edit2 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface ReviewStepProps {
   // Step 1
@@ -13,7 +14,6 @@ interface ReviewStepProps {
   plano: string
   vencimento: string
   cpf: string
-  aceitaTaxaInstalacao: boolean
   // Step 3
   logradouro: string
   numero: string
@@ -22,6 +22,7 @@ interface ReviewStepProps {
   cidadeEndereco: string
   estado: string
   cep: string
+  pontoReferencia: string
   // Actions
   onConfirm: () => Promise<void>
   onBack: () => void
@@ -71,16 +72,12 @@ function Section({
 
 export function ReviewStep({
   nome, email, whatsapp,
-  cidade, bairro, plano, vencimento, cpf, aceitaTaxaInstalacao,
-  logradouro, numero, complemento, bairroCep, cidadeEndereco, estado, cep,
+  cidade, bairro, plano, vencimento, cpf,
+  logradouro, numero, complemento, bairroCep, cidadeEndereco, estado, cep, pontoReferencia,
   onConfirm, onBack, onEditStep, isSubmitting,
 }: ReviewStepProps) {
   const enderecoCompleto = [logradouro, numero, complemento].filter(Boolean).join(", ")
-  const cpfFormatado =
-    cpf.length === 11 ? `${cpf.slice(0, 3)}.***.***-${cpf.slice(9)}` :
-    cpf.length === 14 ? `${cpf.slice(0, 2)}.***.***/****-${cpf.slice(12)}` :
-    cpf
-  const docLabel = cpf.length === 14 ? "CNPJ" : "CPF"
+  const cpfFormatado = cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
   const whatsappFormatado = whatsapp.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
   const cepFormatado = cep.replace(/(\d{5})(\d{3})/, "$1-$2")
 
@@ -109,7 +106,7 @@ export function ReviewStep({
           <Row label="Nome" value={nome} />
           <Row label="E-mail" value={email} />
           <Row label="WhatsApp" value={whatsappFormatado} />
-          <Row label={docLabel} value={cpfFormatado} />
+          <Row label="CPF" value={cpfFormatado} />
         </Section>
 
         {/* Plano */}
@@ -118,15 +115,6 @@ export function ReviewStep({
           <Row label="Bairro" value={bairro} />
           <Row label="Plano" value={plano} />
           <Row label="Vencimento" value={`Todo dia ${vencimento}`} />
-          {aceitaTaxaInstalacao && (
-            <div className="flex justify-between items-center py-2.5">
-              <span className="text-[13px] text-muted-foreground">Taxa de instalação</span>
-              <span className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
-                <Check className="w-3.5 h-3.5 text-green-500" />
-                R$ 150,00 via Pix
-              </span>
-            </div>
-          )}
         </Section>
 
         {/* Endereço */}
@@ -135,6 +123,7 @@ export function ReviewStep({
           <Row label="Bairro" value={bairroCep} />
           <Row label="Cidade/UF" value={`${cidadeEndereco} - ${estado}`} />
           <Row label="CEP" value={cepFormatado} />
+          <Row label="Referência" value={pontoReferencia} />
         </Section>
       </div>
 
