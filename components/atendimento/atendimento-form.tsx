@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { Send, Loader2, CheckCircle2, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatCpfCnpj, detectTipoPessoa, validateCpfCnpj, formatPhone, formatCEP, validateEmail, validatePhone, validateCEP } from "@/lib/formatters"
-import { DATA, getVencimentos } from "@/lib/data"
+import { DATA, getVencimentos, getInstalacao } from "@/lib/data"
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? ""
 
@@ -93,6 +93,9 @@ export function AtendimentoForm() {
   const planoManual = !cobertura
   const planos = cobertura?.planos ?? []
   const vencimentos = cobertura?.vencimentos ?? ["5", "20"]
+
+  // Taxa de instalação dinâmica (POP 42 = R$160, demais = R$150)
+  const instalacao = cidade && bairro ? getInstalacao(cidade, bairro) : null
 
   // Reseta plano/vencimento quando cidade ou bairro mudam (evita plano de um bairro
   // ficando selecionado depois que o atendente edita o endereço)
@@ -402,7 +405,7 @@ export function AtendimentoForm() {
               </div>
             )}
 
-            {/* Taxa de instalação */}
+            {/* Taxa de instalação — valor dinâmico por bairro */}
             {cidade && bairro && (
               <div className={cn(
                 "flex items-start gap-3 p-4 rounded-xl border-[1.5px] transition-all cursor-pointer",
@@ -417,7 +420,7 @@ export function AtendimentoForm() {
                   )}
                 </div>
                 <div>
-                  <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>Taxa de instalação — R$ 150,00 via Pix</p>
+                  <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>Taxa de instalação — {instalacao?.descricao ?? "R$ 150,00"} via Pix</p>
                   <p className="text-[12px] mt-0.5" style={{ color: "var(--muted-foreground)" }}>Cliente ciente e de acordo com a taxa de instalação</p>
                 </div>
               </div>

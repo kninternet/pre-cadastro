@@ -184,29 +184,22 @@ export function getPlanoId(cidade: string, bairro: string, velocidade: string): 
 }
 
 // ── Taxa de instalação por POP ──────────────────────────────────────────────
-// POP 42 (Covanca): R$ 50,00 + primeira mensalidade do plano (PIX ou dinheiro)
+// POP 42 (Covanca): R$ 160,00 fixo (PIX ou dinheiro)
 // Demais POPs: R$ 150,00 fixo (PIX)
 export interface TaxaInstalacao {
-  fixa: number            // valor fixo (50 ou 150)
-  incluiMensalidade: boolean  // true = cobra primeira mensalidade junto
-  descricao: string       // texto legível para exibir no form
+  fixa: number
+  incluiMensalidade: boolean
+  descricao: string
 }
 
-export function getInstalacao(cidade: string, bairro: string, planoPreco?: string): TaxaInstalacao {
+export function getInstalacao(cidade: string, bairro: string, _planoPreco?: string): TaxaInstalacao {
   const pop = getPopPortador(cidade, bairro)
 
   if (pop.pop_id === 42) {
-    const mensalidade = planoPreco
-      ? parseFloat(planoPreco.replace(/[^\d,]/g, "").replace(",", "."))
-      : 0
-    const total = 50 + mensalidade
-    const totalFmt = total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })
     return {
-      fixa: 50,
-      incluiMensalidade: true,
-      descricao: planoPreco
-        ? `R$ 50,00 + 1ª mensalidade (${planoPreco}) = R$ ${totalFmt}`
-        : "R$ 50,00 + 1ª mensalidade do plano escolhido",
+      fixa: 160,
+      incluiMensalidade: false,
+      descricao: "R$ 160,00",
     }
   }
 

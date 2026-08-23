@@ -50,9 +50,8 @@ export function Step2({
   const vencimentos = cidade && bairro ? getVencimentos(cidade, bairro) : []
   const showSummary = cidade && bairro && plano && vencimento
 
-  // Taxa de instalação dinâmica (POP 42 = R$50 + mensalidade, demais = R$150)
-  const planoPreco = plano ? plano.split(" - ")[1]?.trim() : undefined
-  const instalacao = cidade && bairro ? getInstalacao(cidade, bairro, planoPreco) : null
+  // Taxa de instalação dinâmica (POP 42 = R$160, demais = R$150)
+  const instalacao = cidade && bairro ? getInstalacao(cidade, bairro) : null
 
   const selectClass = (hasError: boolean) =>
     cn(
@@ -338,11 +337,6 @@ export function Step2({
                   Estou ciente de que será cobrada uma{" "}
                   <strong className="text-foreground">taxa de instalação de {instalacao?.descricao ?? "R$ 150,00"}</strong>
                   {" "}paga via <strong className="text-foreground">Pix ou dinheiro</strong> no momento da instalação.
-                  {instalacao?.incluiMensalidade && (
-                    <span className="block mt-1 text-[12px] text-primary font-medium">
-                      * Inclui R$&nbsp;50,00 de taxa + primeira mensalidade do plano
-                    </span>
-                  )}
                 </span>
               </label>
               {errors.aceitaTaxaInstalacao && !aceitaTaxaInstalacao && (
