@@ -49,6 +49,13 @@ export const DATA: Record<string, CityData> = {
         { v: "600MB", p: "R$ 180,00" },
         { v: "800MB", p: "R$ 200,00" }
       ],
+      // Região Tribobó — POP 100071
+      "Tribobó": [
+        { v: "100MB", p: "R$ 120,00" },
+        { v: "200MB", p: "R$ 150,00" },
+        { v: "300MB", p: "R$ 170,00" },
+        { v: "500MB", p: "R$ 200,00" },
+      ],
     }
   },
   "Rio de Janeiro": {
@@ -85,12 +92,15 @@ export const DATA: Record<string, CityData> = {
 // ── Vencimentos por bairro (exceções) — fallback: vencimentos da cidade ─────
 // Região Covanca (POP 42) opera com dias 5, 10, 15 e 20 — NÃO ofertar 25 e 30
 export const VENCIMENTOS_BAIRRO: Record<string, string[]> = {
+  // Região Covanca (POP 42)
   "Rio de Janeiro|Tanque":      ["5", "10", "15", "20"],
   "Rio de Janeiro|Jacarepaguá": ["5", "10", "15", "20"],
   "Rio de Janeiro|Pechincha":   ["5", "10", "15", "20"],
   "Rio de Janeiro|Taquara":     ["5", "10", "15", "20"],
   "Rio de Janeiro|Freguesia":   ["5", "10", "15", "20"],
   "Rio de Janeiro|Praça Seca":  ["5", "10", "15", "20"],
+  // Região Tribobó (POP 100071)
+  "São Gonçalo|Tribobó":        ["5", "10", "15"],
 }
 
 export function getVencimentos(cidade: string, bairro: string): string[] {
@@ -107,6 +117,10 @@ export interface PopPortador {
 const BAIRROS_POP42 = new Set(["Tanque", "Jacarepaguá", "Pechincha", "Taquara", "Freguesia", "Praça Seca"])
 
 export function getPopPortador(cidade: string, bairro: string): PopPortador {
+  // Tribobó — POP 100071 (Nova Grécia/Lacomba no SGP), portador GerenciaNet | TRIBOBO-EFI
+  if (cidade === "São Gonçalo" && bairro === "Tribobó")
+    return { pop_id: 100071, portador_id: 100041, nas: "BNG-ACCELPPP-VYOS-GEN11" }
+
   if (cidade === "Rio de Janeiro") {
     if (BAIRROS_POP42.has(bairro))
       return { pop_id: 42, portador_id: 30, nas: "BNG-ACCELPPP-VYOS-GEN11" }
@@ -145,6 +159,12 @@ const PLANO_MAP: Record<PlanoKey, number> = {
   "Rio de Janeiro|Cavalcanti|200MB":  209,
   "Rio de Janeiro|Cavalcanti|400MB":  210,
   "Rio de Janeiro|Cavalcanti|600MB":  211,
+
+  // São Gonçalo — Tribobó — POP 100071
+  "São Gonçalo|Tribobó|100MB": 101315,
+  "São Gonçalo|Tribobó|200MB": 101316,
+  "São Gonçalo|Tribobó|300MB": 101318,
+  "São Gonçalo|Tribobó|500MB": 101319,
 
   // Rio de Janeiro — Região Covanca (Tanque, Jacarepaguá, Pechincha, Taquara, Freguesia, Praça Seca) — POP 42
   "Rio de Janeiro|Tanque|300MB":      101312,
@@ -195,7 +215,7 @@ export interface TaxaInstalacao {
 export function getInstalacao(cidade: string, bairro: string, _planoPreco?: string): TaxaInstalacao {
   const pop = getPopPortador(cidade, bairro)
 
-  if (pop.pop_id === 42) {
+  if (pop.pop_id === 42 || pop.pop_id === 100071) {
     return {
       fixa: 160,
       incluiMensalidade: false,
