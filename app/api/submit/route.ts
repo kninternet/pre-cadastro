@@ -74,6 +74,10 @@ export async function POST(request: Request) {
     cpf_duplicado,
     origem,
     client_ip_address, client_user_agent, fbp, ga_client_id, session_id,
+    // MGM fields
+    mgm: isMgm,
+    indicador_nome, indicador_primeiro_nome, indicador_tipo,
+    indicador_valor, indicador_cpf, indicador_cliente_id, indicador_validado,
   } = body
 
   const { logradouro, numero, complemento } = parseLogradouro(logradouroRaw ?? '')
@@ -107,7 +111,11 @@ export async function POST(request: Request) {
         WHERE id = $9`,
         [
           cep.replace(/\D/g, ''), logradouro, numero, complemento ?? null,
-          bairro, cidade, uf, 'suprimido', dbLeadId,
+          bairro, cidade, uf,
+          isMgm && indicador_nome
+            ? `INDICAÇÃO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} (${indicador_cpf || indicador_valor || 'nome'})`
+            : 'suprimido',
+          dbLeadId,
         ]
       )
     } catch (err) {
@@ -125,7 +133,10 @@ export async function POST(request: Request) {
     complemento: complemento ?? '',
     bairro, cidade,
     cep: cep.replace(/\D/g, ''),
-    uf, pais: 'BR', pontoreferencia: 'suprimido',
+    uf, pais: 'BR',
+    pontoreferencia: isMgm && indicador_nome
+      ? `INDICAÇÃO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} (${indicador_cpf || indicador_valor || 'nome'})`
+      : 'suprimido',
   }
 
   // Detecta PF (11 dígitos) ou PJ (14 dígitos)
@@ -256,7 +267,8 @@ export async function POST(request: Request) {
       const docLabel = isCpfDup ? `${docTipo} Duplicado` : docTipo
       // Atendimento não passa por OTP — nunca sinaliza. Web sem OTP: "OTP = False" ao fim.
       const otpFlag = origem !== 'atendimento' && !emailConfirmado ? ' - OTP = False' : ''
-      const subject = `Novo Cadastro - ${docLabel} - ${nome} - ${origemLabel}${otpFlag}`
+      const mgmTag = isMgm ? ' #amigodefibra' : ''
+      const subject = `Novo Cadastro${mgmTag} - ${docLabel} - ${nome} - ${origemLabel}${otpFlag}`
 
       const txtContent = [
         `=== KN Internet — Lead #${dbLeadId} ===`,
@@ -287,7 +299,17 @@ export async function POST(request: Request) {
         `Bairro: ${bairro}`,
         `Cidade/UF: ${cidade} - ${uf}`,
         `CEP: ${cep}`,
-        `Referência: suprimido`,
+        `Referência: ${isMgm && indicador_nome ? `INDICAÇÃO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} (${indicador_cpf || indicador_valor || 'nome'})` : 'suprimido'}`,
+        ...(isMgm ? [
+          ``,
+          `--- INDICAÇÃO (AMIGO DE FIBRA) ---`,
+          `Indicador: ${indicador_nome || '—'}`,
+          `Tipo identificação: ${indicador_tipo || '—'}`,
+          `Valor informado: ${indicador_valor || '—'}`,
+          `CPF indicador: ${indicador_cpf || '—'}`,
+          `Cliente ID indicador: ${indicador_cliente_id || '—'}`,
+          `Validado (quiz): ${indicador_validado ? 'Sim' : 'Não'}`,
+        ] : []),
         ``,
         `--- RASTREAMENTO ---`,
         `SGP Cliente ID: ${sgpClienteId ?? '—'}`,
@@ -315,6 +337,13 @@ export async function POST(request: Request) {
             <tr><td><b>SGP Cliente ID</b></td><td>${sgpClienteId ?? '—'}</td></tr>
             <tr><td><b>SGP Status</b></td><td>${isCpfDup ? 'CPF duplicado' : sgpOk ? 'Cadastrado' : sgpMessage}</td></tr>
             <tr><td><b>Origem</b></td><td>${origemLabel}</td></tr>
+            ${isMgm ? `
+            <tr><td colspan="2" style="padding-top:12px"><b>🤝 INDICAÇÃO — AMIGO DE FIBRA</b></td></tr>
+            <tr><td><b>Indicador</b></td><td>${indicador_nome || '—'}</td></tr>
+            <tr><td><b>Tipo</b></td><td>${indicador_tipo || '—'}</td></tr>
+            <tr><td><b>CPF indicador</b></td><td>${indicador_cpf || '—'}</td></tr>
+            <tr><td><b>Validado (quiz)</b></td><td>${indicador_validado ? 'Sim ✓' : 'Não'}</td></tr>
+            ` : ''}
             <tr><td><b>Lead ID</b></td><td>#${dbLeadId}</td></tr>
           </table>
         `,

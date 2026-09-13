@@ -7,6 +7,7 @@ import { ProgressBar } from "./progress-bar"
 import { Step1 } from "./step-1"
 import { Step2 } from "./step-2"
 import { Step3 } from "./step-3"
+import { StepIndicacao, type IndicacaoData } from "./step-indicacao"
 import { ReviewStep } from "./review-step"
 import { OtpVerification } from "./otp-verification"
 import { WelcomeModal } from "./welcome-modal"
@@ -17,9 +18,20 @@ import { CIDADE_SLUG_TO_NOME, BAIRRO_SLUG_TO_NOME, PLANO_SLUG_TO_VELOCIDADE_PREC
 
 type FlowState = "form" | "review" | "otp" | "done"
 
-export function PreCadastroForm() {
+export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
   const searchParams = useSearchParams()
   const [currentStep, setCurrentStep] = useState(1)
+
+  // ── MGM — Indicação ───────────────────────────────────────────────────────
+  const [indicacao, setIndicacao] = useState<IndicacaoData>({
+    indicador_nome: '',
+    indicador_primeiro_nome: '',
+    indicador_tipo: '',
+    indicador_valor: '',
+    indicador_cpf: '',
+    indicador_cliente_id: null,
+    indicador_validado: false,
+  })
   const [flowState, setFlowState] = useState<FlowState>("form")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, boolean>>({})
@@ -210,7 +222,15 @@ export function PreCadastroForm() {
       setEditandoDeReview(false)
       window.scrollTo({ top: 0, behavior: "smooth" })
     } else {
-      await goToStep(nextStep)
+      // MGM: after step 1, go to step 15 (indicação) instead of step 2
+      if (mgm && currentStep === 1 && nextStep === 2) {
+        await goToStep(1) // triggers step1 API save
+        setCurrentStep(15)
+        setErrors({})
+        window.scrollTo({ top: 0, behavior: "smooth" })
+      } else {
+        await goToStep(nextStep)
+      }
     }
   }
 
@@ -226,6 +246,10 @@ export function PreCadastroForm() {
     if (editandoDeReview) {
       setFlowState("review")
       setEditandoDeReview(false)
+    } else if (mgm) {
+      setCurrentStep(15)
+      setErrors({})
+      window.scrollTo({ top: 0, behavior: "smooth" })
     } else {
       goToStep(1)
     }
@@ -271,9 +295,19 @@ export function PreCadastroForm() {
       observacao: `Plano: ${plano} | Vencimento: Dia ${vencimento} | Cidade cobertura: ${cidade} | Bairro cobertura: ${bairro}`,
       email: email.trim(),
       celular: whatsapp.replace(/\D/g, ""),
-      origem: "web",
+      origem: mgm ? "amigodefibra" : "web",
       ...(token && { token }),
       ...(leadId && { lead_id: String(leadId) }),
+      ...(mgm && indicacao.indicador_nome && {
+        mgm: true,
+        indicador_nome: indicacao.indicador_nome,
+        indicador_primeiro_nome: indicacao.indicador_primeiro_nome,
+        indicador_tipo: indicacao.indicador_tipo,
+        indicador_valor: indicacao.indicador_valor,
+        indicador_cpf: indicacao.indicador_cpf,
+        indicador_cliente_id: indicacao.indicador_cliente_id,
+        indicador_validado: indicacao.indicador_validado,
+      }),
       ...ctx,
     }
 
@@ -395,6 +429,24 @@ export function PreCadastroForm() {
             whatsapp={whatsapp} setWhatsapp={setWhatsapp}
             errors={errors}
             onNext={() => handleStepNext(2)}
+          />
+        )}
+
+        {currentStep === 15 && mgm && (
+          <StepIndicacao
+            indicacao={indicacao}
+            setIndicacao={setIndicacao}
+            errors={errors}
+            onNext={() => {
+              setCurrentStep(2)
+              setErrors({})
+              window.scrollTo({ top: 0, behavior: "smooth" })
+            }}
+            onBack={() => {
+              setCurrentStep(1)
+              setErrors({})
+              window.scrollTo({ top: 0, behavior: "smooth" })
+            }}
           />
         )}
 
