@@ -7,10 +7,20 @@ import { ProgressBar } from "./progress-bar"
 import { Step1 } from "./step-1"
 import { Step2 } from "./step-2"
 import { Step3 } from "./step-3"
-import { StepIndicacao, type IndicacaoData } from "./step-indicacao"
 import { ReviewStep } from "./review-step"
+
+export interface IndicacaoData {
+  indicador_nome: string
+  indicador_primeiro_nome: string
+  indicador_tipo: string
+  indicador_valor: string
+  indicador_cpf: string
+  indicador_cliente_id: number | null
+  indicador_validado: boolean
+}
 import { OtpVerification } from "./otp-verification"
 import { WelcomeModal } from "./welcome-modal"
+import { MgmWelcomeModal } from "./mgm-welcome-modal"
 import { formatCPF, formatPhone, validateEmail, validateCPF, validatePhone, validateCEP, validateCpfCnpj } from "@/lib/formatters"
 import { trackStep1View, trackStep1Next, trackStep2Next, trackStep3Submit, trackLeadSuccess, trackLeadError, getBrowserContext } from "@/lib/analytics"
 import { DATA, getVencimentos } from "@/lib/data"
@@ -222,15 +232,7 @@ export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
       setEditandoDeReview(false)
       window.scrollTo({ top: 0, behavior: "smooth" })
     } else {
-      // MGM: after step 1, go to step 15 (indicação) instead of step 2
-      if (mgm && currentStep === 1 && nextStep === 2) {
-        await goToStep(1) // triggers step1 API save
-        setCurrentStep(15)
-        setErrors({})
-        window.scrollTo({ top: 0, behavior: "smooth" })
-      } else {
-        await goToStep(nextStep)
-      }
+      await goToStep(nextStep)
     }
   }
 
@@ -246,10 +248,6 @@ export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
     if (editandoDeReview) {
       setFlowState("review")
       setEditandoDeReview(false)
-    } else if (mgm) {
-      setCurrentStep(15)
-      setErrors({})
-      window.scrollTo({ top: 0, behavior: "smooth" })
     } else {
       goToStep(1)
     }
@@ -404,6 +402,11 @@ export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
             <div className="mt-5 bg-muted border border-border rounded-xl px-5 py-3.5 text-sm text-foreground w-full max-w-[340px]">
               📅 Vencimento: todo dia <strong className="text-primary">{vencimento}</strong> de cada mês
             </div>
+
+            {mgm && indicacao.indicador_nome && (
+              <MgmReferrerFollow indicadorNome={indicacao.indicador_nome} />
+            )}
+
             <button
               onClick={() => window.location.reload()}
               className="mt-7 px-8 py-3 bg-transparent border-[1.5px] border-secondary rounded-xl font-heading text-[15px] font-bold text-secondary cursor-pointer transition-all hover:bg-secondary hover:text-white"
@@ -418,7 +421,20 @@ export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
 
   return (
     <>
-      <WelcomeModal />
+      {mgm ? (
+        <MgmWelcomeModal
+          onSubmit={({ visitanteName, indicadorNome }) => {
+            setNome(visitanteName)
+            setIndicacao(prev => ({
+              ...prev,
+              indicador_nome: indicadorNome,
+              indicador_primeiro_nome: indicadorNome.split(' ')[0],
+            }))
+          }}
+        />
+      ) : (
+        <WelcomeModal />
+      )}
       <ProgressBar currentStep={currentStep} />
 
       <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
@@ -429,24 +445,6 @@ export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
             whatsapp={whatsapp} setWhatsapp={setWhatsapp}
             errors={errors}
             onNext={() => handleStepNext(2)}
-          />
-        )}
-
-        {currentStep === 15 && mgm && (
-          <StepIndicacao
-            indicacao={indicacao}
-            setIndicacao={setIndicacao}
-            errors={errors}
-            onNext={() => {
-              setCurrentStep(2)
-              setErrors({})
-              window.scrollTo({ top: 0, behavior: "smooth" })
-            }}
-            onBack={() => {
-              setCurrentStep(1)
-              setErrors({})
-              window.scrollTo({ top: 0, behavior: "smooth" })
-            }}
           />
         )}
 
@@ -486,5 +484,108 @@ export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
         )}
       </div>
     </>
+  )
+}
+// ── MGM: Post-submit referrer validation ─────────────────────────────────
+function MgmReferrerFollow({ indicadorNome }: { indicadorNome: string }) {
+  const [tipo, setTipo] = useState('')
+  const [valor, setValor] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'ok' | 'error'>('idle')
+  const [msg, setMsg] = useState('')
+
+  async function handleValidar() {
+    if (!tipo || !valor.trim()) return
+    setLoading(true)
+    setStatus('idle')
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/mgm/validar-indicador`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo,
+          valor: tipo === 'cpf' ? valor.replace(/\D/g, '') : tipo === 'telefone' ? valor.replace(/\D/g, '') : valor.trim(),
+        }),
+      })
+      const data = await res.json()
+      if (data.found) {
+        setStatus('ok')
+        setMsg(`Indicador confirmado: ${data.primeiro_nome}! O mês grátis será aplicado após a ativação.`)
+      } else {
+        setStatus('error')
+        setMsg(data.message || 'Não encontramos esse cadastro.')
+      }
+    } catch {
+      setStatus('error')
+      setMsg('Erro ao consultar. Tente novamente.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (status === 'ok') {
+    return (
+      <div className="mt-6 w-full max-w-[380px] bg-green-50 border border-green-200 rounded-xl p-4 text-left">
+        <p className="text-sm font-semibold text-green-700 flex items-center gap-2">
+          🤝 {msg}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-6 w-full max-w-[380px] bg-muted border border-border rounded-xl p-4 text-left">
+      <p className="text-sm font-semibold text-foreground mb-1">
+        🤝 Indicado por {indicadorNome}
+      </p>
+      <p className="text-xs text-muted-foreground mb-3">
+        Para garantir o mês grátis do seu amigo, informe o CPF, e-mail ou WhatsApp dele:
+      </p>
+      <div className="flex flex-col gap-2">
+        <select
+          value={tipo}
+          onChange={(e) => { setTipo(e.target.value); setValor(''); setStatus('idle'); setMsg('') }}
+          className="w-full h-[40px] px-3 bg-input border border-border rounded-lg text-sm outline-none appearance-none cursor-pointer"
+          style={{ color: tipo ? 'var(--foreground)' : 'var(--muted-foreground)' }}
+        >
+          <option value="" disabled>Selecione</option>
+          <option value="cpf">CPF</option>
+          <option value="email">E-mail</option>
+          <option value="telefone">WhatsApp</option>
+        </select>
+        {tipo && (
+          <input
+            type={tipo === 'email' ? 'email' : 'text'}
+            value={valor}
+            onChange={(e) => {
+              let v = e.target.value
+              if (tipo === 'cpf') v = formatCPF(v)
+              if (tipo === 'telefone') v = formatPhone(v)
+              setValor(v)
+              setStatus('idle')
+              setMsg('')
+            }}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleValidar() }}
+            placeholder={tipo === 'cpf' ? '000.000.000-00' : tipo === 'email' ? 'email@exemplo.com' : '(21) 99999-9999'}
+            maxLength={tipo === 'cpf' ? 14 : tipo === 'telefone' ? 15 : undefined}
+            inputMode={tipo === 'cpf' || tipo === 'telefone' ? 'numeric' : undefined}
+            className="w-full h-[40px] px-3 bg-input border border-border rounded-lg text-sm outline-none"
+          />
+        )}
+        {status === 'error' && (
+          <p className="text-xs text-destructive">{msg}</p>
+        )}
+        <button
+          onClick={handleValidar}
+          disabled={!tipo || !valor.trim() || loading}
+          className="w-full h-[40px] bg-primary text-white rounded-lg text-sm font-bold cursor-pointer transition-all hover:bg-[#ea6c0a] disabled:opacity-50"
+        >
+          {loading ? 'Verificando...' : 'Confirmar indicador'}
+        </button>
+      </div>
+      <p className="text-[11px] text-muted-foreground mt-2">
+        Não tem esses dados agora? Sem problema — nossa equipe perguntará durante o contato.
+      </p>
+    </div>
   )
 }
