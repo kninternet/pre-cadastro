@@ -33,6 +33,7 @@ export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
   const [currentStep, setCurrentStep] = useState(1)
 
   // ── MGM — Indicação ───────────────────────────────────────────────────────
+  const [mgmModalDone, setMgmModalDone] = useState(false)
   const [indicacao, setIndicacao] = useState<IndicacaoData>({
     indicador_nome: '',
     indicador_primeiro_nome: '',
@@ -421,7 +422,7 @@ export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
 
   return (
     <>
-      {mgm ? (
+      {mgm && !mgmModalDone ? (
         <MgmWelcomeModal
           onSubmit={({ visitanteName, indicadorNome }) => {
             setNome(visitanteName)
@@ -430,11 +431,12 @@ export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
               indicador_nome: indicadorNome,
               indicador_primeiro_nome: indicadorNome.split(' ')[0],
             }))
+            setMgmModalDone(true)
           }}
         />
-      ) : (
+      ) : !mgm ? (
         <WelcomeModal />
-      )}
+      ) : null}
       <ProgressBar currentStep={currentStep} />
 
       <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
