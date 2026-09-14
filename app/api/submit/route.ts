@@ -113,7 +113,7 @@ export async function POST(request: Request) {
           cep.replace(/\D/g, ''), logradouro, numero, complemento ?? null,
           bairro, cidade, uf,
           isMgm && indicador_nome
-            ? `INDICAÇÃO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} (${indicador_cpf || indicador_valor || 'nome'})`
+            ? `INDICAÇÃO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} (${indicador_cpf || indicador_valor || 'nome'}) - lead #${dbLeadId}`
             : 'suprimido',
           dbLeadId,
         ]
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
     cep: cep.replace(/\D/g, ''),
     uf, pais: 'BR',
     pontoreferencia: isMgm && indicador_nome
-      ? `INDICAÇÃO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} (${indicador_cpf || indicador_valor || 'nome'})`
+      ? `INDICAÇÃO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} (${indicador_cpf || indicador_valor || 'nome'}) - lead #${dbLeadId}`
       : 'suprimido',
   }
 
@@ -299,7 +299,7 @@ export async function POST(request: Request) {
         `Bairro: ${bairro}`,
         `Cidade/UF: ${cidade} - ${uf}`,
         `CEP: ${cep}`,
-        `Referência: ${isMgm && indicador_nome ? `INDICAÇÃO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} (${indicador_cpf || indicador_valor || 'nome'})` : 'suprimido'}`,
+        `Referência: ${isMgm && indicador_nome ? `INDICAÇÃO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} (${indicador_cpf || indicador_valor || 'nome'}) - lead #${dbLeadId}` : 'suprimido'}`,
         ...(isMgm ? [
           ``,
           `--- INDICAÇÃO (AMIGO DE FIBRA) ---`,

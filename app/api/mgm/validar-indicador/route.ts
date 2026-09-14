@@ -4,22 +4,6 @@ import { promisify } from 'util'
 
 const execAsync = promisify(exec)
 
-const MALE_NAMES = ["Lucas","Pedro","Rafael","Bruno","Carlos","André","Thiago","Marcos","Felipe","Gabriel","Henrique","Diego","Leandro","Gustavo","Vinícius","Matheus","Leonardo","Eduardo","Daniel","Jorge","Fábio","Sérgio","Renato","Paulo","Ricardo","Fernando","Alexandre","Márcio","Roberto","Antônio"]
-const FEMALE_NAMES = ["Ana","Juliana","Fernanda","Camila","Patrícia","Larissa","Bianca","Carla","Amanda","Bruna","Tatiana","Renata","Daniela","Letícia","Priscila","Vanessa","Aline","Natália","Isabela","Mariana","Cláudia","Adriana","Simone","Cristina","Lúcia","Gabriela","Raquel","Michele","Mônica","Regina"]
-
-function detectGender(name: string): 'M' | 'F' {
-  const n = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  return ['a','ia','na','ina','ela','ila','ane','ene','ice','ude'].some(e => n.endsWith(e)) ? 'F' : 'M'
-}
-
-function generateQuiz(realName: string): string[] {
-  const gender = detectGender(realName)
-  const pool = (gender === 'F' ? FEMALE_NAMES : MALE_NAMES)
-    .filter(n => n.toLowerCase() !== realName.toLowerCase())
-  const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, 4)
-  return [...shuffled, realName].sort(() => Math.random() - 0.5)
-}
-
 function capitalizeName(name: string): string {
   return name
     .toLowerCase()
@@ -93,14 +77,13 @@ export async function POST(request: Request) {
     }
 
     const primeiroNome = capitalizeName(nomeCompleto.split(' ')[0])
-    const quiz = generateQuiz(primeiroNome)
 
     return NextResponse.json({
       found: true,
       primeiro_nome: primeiroNome,
+      nome_completo: capitalizeName(nomeCompleto),
       cliente_id: clienteId,
       cpf: cpfCnpj.replace(/\D/g, ''),
-      quiz_options: quiz,
     })
   } catch (err) {
     console.error('[MGM VALIDAR-INDICADOR ERROR]', err)
