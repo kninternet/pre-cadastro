@@ -58,8 +58,7 @@ function parseLogradouro(logradouro: string) {
 function sanitizePontoReferencia(ref: string): string {
   // SGP aceita apenas letras, espaços, hífen e apóstrofo
   return ref
-    .replace(/[()#]/g, '')
-    .replace(/[^a-zA-ZÀ-ÿ0-9\s\-']/g, '')
+    .replace(/[^a-zA-ZÀ-ÿ\s\-']/g, '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 100)
@@ -129,7 +128,7 @@ export async function POST(request: Request) {
 
   const pontoRefSgp = sanitizePontoReferencia(
     isMgm && indicador_nome
-      ? `INDICACAO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} - lead ${dbLeadId}`
+      ? `INDICACAO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome}`
       : 'suprimido'
   )
 
