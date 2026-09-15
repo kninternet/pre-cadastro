@@ -26,7 +26,7 @@ import { trackStep1View, trackStep1Next, trackStep2Next, trackStep3Submit, track
 import { DATA, getVencimentos } from "@/lib/data"
 import { CIDADE_SLUG_TO_NOME, BAIRRO_SLUG_TO_NOME, PLANO_SLUG_TO_VELOCIDADE_PRECO, formatPlanoKey } from "@/lib/coverage-translation"
 
-type FlowState = "form" | "review" | "otp" | "done"
+type FlowState = "form" | "review" | "mgm-validar" | "otp" | "done"
 
 export function PreCadastroForm({ mgm = false, mgmVisitanteNome, mgmIndicadorNome }: {
   mgm?: boolean
@@ -327,7 +327,11 @@ export function PreCadastroForm({ mgm = false, mgmVisitanteNome, mgmIndicadorNom
       if (result.status === "success") {
         trackLeadSuccess({ cidade, bairro, plano, leadId, sessionId })
         await sendOtp()
-        setFlowState("otp")
+        if (mgm && indicacao.indicador_nome) {
+          setFlowState("mgm-validar")
+        } else {
+          setFlowState("otp")
+        }
         window.scrollTo({ top: 0, behavior: "smooth" })
       } else {
         throw new Error("status inesperado")
@@ -372,6 +376,47 @@ export function PreCadastroForm({ mgm = false, mgmVisitanteNome, mgmIndicadorNom
     )
   }
 
+  if (flowState === "mgm-validar") {
+    return (
+      <>
+        <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
+          <div className="flex flex-col items-center text-center p-8 md:p-12">
+            <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mb-5">
+              <span className="text-3xl">🤝</span>
+            </div>
+            <h2 className="font-heading text-xl font-extrabold text-foreground mb-2">
+              Quase lá!
+            </h2>
+            <p className="text-[14px] text-muted-foreground max-w-[360px] leading-relaxed mb-4">
+              Seu cadastro foi enviado com sucesso. Agora, ajude-nos a confirmar quem te indicou para garantir o mês grátis dele.
+            </p>
+
+            <MgmReferrerFollow
+              indicadorNome={indicacao.indicador_nome}
+              onValidated={(data) => {
+                setIndicacao(prev => ({
+                  ...prev,
+                  indicador_nome: data.nome_completo || prev.indicador_nome,
+                  indicador_primeiro_nome: data.primeiro_nome || prev.indicador_primeiro_nome,
+                  indicador_cpf: data.cpf || prev.indicador_cpf,
+                  indicador_cliente_id: data.cliente_id ?? prev.indicador_cliente_id,
+                  indicador_validado: true,
+                }))
+              }}
+            />
+
+            <button
+              onClick={() => { setFlowState("otp"); window.scrollTo({ top: 0, behavior: "smooth" }) }}
+              className="mt-5 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              Pular e confirmar e-mail →
+            </button>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   if (flowState === "otp") {
     return (
       <>
@@ -410,7 +455,12 @@ export function PreCadastroForm({ mgm = false, mgmVisitanteNome, mgmIndicadorNom
             </div>
 
             {mgm && indicacao.indicador_nome && (
-              <MgmReferrerFollow indicadorNome={indicacao.indicador_nome} />
+              <div className="mt-5 bg-green-50 border border-green-200 rounded-xl px-5 py-3.5 text-sm text-left w-full max-w-[340px]">
+                <p className="font-semibold text-green-700">
+                  🤝 Indicado por {indicacao.indicador_nome}
+                  {indicacao.indicador_validado && " ✓"}
+                </p>
+              </div>
             )}
 
             <button
@@ -494,7 +544,10 @@ export function PreCadastroForm({ mgm = false, mgmVisitanteNome, mgmIndicadorNom
   )
 }
 // ── MGM: Post-submit referrer validation ─────────────────────────────────
-function MgmReferrerFollow({ indicadorNome }: { indicadorNome: string }) {
+function MgmReferrerFollow({ indicadorNome, onValidated }: {
+  indicadorNome: string
+  onValidated?: (data: { primeiro_nome: string; nome_completo: string; cliente_id: number | null; cpf: string }) => void
+}) {
   const [nomeEditavel, setNomeEditavel] = useState(indicadorNome)
   const [editando, setEditando] = useState(false)
   const [tipo, setTipo] = useState('')
@@ -520,6 +573,12 @@ function MgmReferrerFollow({ indicadorNome }: { indicadorNome: string }) {
       if (data.found) {
         setStatus('ok')
         setMsg(`Indicador confirmado: ${data.primeiro_nome}! O mês grátis será aplicado após a ativação.`)
+        onValidated?.({
+          primeiro_nome: data.primeiro_nome,
+          nome_completo: data.nome_completo,
+          cliente_id: data.cliente_id,
+          cpf: data.cpf,
+        })
       } else {
         setStatus('error')
         setMsg(data.message || 'Não encontramos esse cadastro.')

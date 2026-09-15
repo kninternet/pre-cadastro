@@ -56,8 +56,9 @@ function parseLogradouro(logradouro: string) {
 }
 
 function sanitizePontoReferencia(ref: string): string {
+  // SGP aceita apenas letras, espaços, hífen e apóstrofo
   return ref
-    .replace(/[^a-zA-ZÀ-ÿ0-9\s\-']/g, '')
+    .replace(/[^a-zA-ZÀ-ÿ\s\-']/g, '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 100)
@@ -127,7 +128,7 @@ export async function POST(request: Request) {
 
   const pontoRefSgp = sanitizePontoReferencia(
     isMgm && indicador_nome
-      ? `INDICACAO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} - lead ${dbLeadId}`
+      ? `INDICACAO AMIGO DE FIBRA - indicado por ${indicador_nome}`
       : 'suprimido'
   )
 
@@ -177,24 +178,24 @@ export async function POST(request: Request) {
       const celularSgp = sanitizePhoneForSGP(celular)
       const sgpPayload = tipoPessoa === 'J'
         ? {
-          app: process.env.SGP_APP ?? '',
-          token: process.env.SGP_TOKEN ?? '',
-          nome,
-          cpfcnpj: cpfLimpo,
-          email,
-          ...(celularSgp.length === 11 ? { celular: celularSgp } : {}),
-          respempresa: nome,
-          endereco: enderecoSgp,
-        }
+            app: process.env.SGP_APP ?? '',
+            token: process.env.SGP_TOKEN ?? '',
+            nome,
+            cpfcnpj: cpfLimpo,
+            email,
+            ...(celularSgp.length === 11 ? { celular: celularSgp } : {}),
+            respempresa: nome,
+            endereco: enderecoSgp,
+          }
         : {
-          app: process.env.SGP_APP ?? '',
-          token: process.env.SGP_TOKEN ?? '',
-          nome,
-          cpfcnpj: cpfLimpo,
-          email,
-          celular: sanitizePhoneForSGP(celular),
-          endereco: enderecoSgp,
-        }
+            app: process.env.SGP_APP ?? '',
+            token: process.env.SGP_TOKEN ?? '',
+            nome,
+            cpfcnpj: cpfLimpo,
+            email,
+            celular: sanitizePhoneForSGP(celular),
+            endereco: enderecoSgp,
+          }
 
       const sgpRes = await fetchWithTimeout(
         `${process.env.SGP_BASE_URL ?? 'https://netecom.sgplocal.com.br'}${sgpEndpoint}`,
@@ -400,8 +401,8 @@ export async function POST(request: Request) {
     await sendAtendimentoEmail(confirmado)
   }, 30_000)
 
-  // ── 5b. E-mail cliente (apenas quando origem = atendimento) ────────────────
-  if (origem === 'atendimento' && email && !isCpfDup) {
+  // ── 5b. E-mail cliente (todas as origens) ───────────────────────────────────
+  if (email && !isCpfDup) {
     try {
       await mailer.sendMail({
         from: `"KN Internet" <${process.env.SMTP_USER}>`,
