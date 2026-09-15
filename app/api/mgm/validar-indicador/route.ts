@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const base = process.env.SGP_BASE_URL ?? 'https://netecom.sgplocal.com.br'
 
     // Monta o filtro conforme o tipo
-    const body: Record<string, string> = { app, token, status: '1' }
+    const body: Record<string, string> = { app, token }
 
     if (tipo === 'cpf') {
       const cpfLimpo = valor.replace(/\D/g, '')
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ found: false, message: 'Não encontramos esse cadastro na nossa base.' })
     }
 
-    // Pega o primeiro contrato ativo
+    // Prioriza contrato ativo, mas aceita qualquer um (inadimplente pode indicar)
     const contrato = contratos.find(c => {
       const status = String(c.contratoStatus ?? c.contrato_status ?? '')
       return status === '1' || status.toLowerCase().includes('ativo')
