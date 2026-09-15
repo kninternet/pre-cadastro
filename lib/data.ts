@@ -51,10 +51,10 @@ export const DATA: Record<string, CityData> = {
       ],
       // Região Tribobó — POP 100071
       "Tribobó": [
-        { v: "100MB", p: "R$ 120,00" },
-        { v: "200MB", p: "R$ 150,00" },
-        { v: "300MB", p: "R$ 170,00" },
-        { v: "500MB", p: "R$ 200,00" },
+        { v: "350MB", p: "R$ 120,00" },
+        { v: "450MB", p: "R$ 150,00" },
+        { v: "600MB", p: "R$ 170,00" },
+        { v: "800MB", p: "R$ 200,00" },
       ],
     }
   },
@@ -117,9 +117,9 @@ export interface PopPortador {
 const BAIRROS_POP42 = new Set(["Tanque", "Jacarepaguá", "Pechincha", "Taquara", "Freguesia", "Praça Seca"])
 
 export function getPopPortador(cidade: string, bairro: string): PopPortador {
-  // Tribobó — POP 100071 (Nova Grécia/Lacomba no SGP), portador GerenciaNet | TRIBOBO-EFI
+  // Tribobó — POP 100071
   if (cidade === "São Gonçalo" && bairro === "Tribobó")
-    return { pop_id: 100071, portador_id: 100041, nas: "BNG-ACCELPPP-VYOS-GEN11" }
+    return { pop_id: 100071, portador_id: 32, nas: "BNG-ACCELPPP-VYOS-GEN11" } // TODO: confirmar portador_id e nas
 
   if (cidade === "Rio de Janeiro") {
     if (BAIRROS_POP42.has(bairro))
@@ -161,10 +161,10 @@ const PLANO_MAP: Record<PlanoKey, number> = {
   "Rio de Janeiro|Cavalcanti|600MB":  211,
 
   // São Gonçalo — Tribobó — POP 100071
-  "São Gonçalo|Tribobó|100MB": 101315,
-  "São Gonçalo|Tribobó|200MB": 101316,
-  "São Gonçalo|Tribobó|300MB": 101318,
-  "São Gonçalo|Tribobó|500MB": 101319,
+  "São Gonçalo|Tribobó|350MB": 101315,
+  "São Gonçalo|Tribobó|450MB": 101316,
+  "São Gonçalo|Tribobó|600MB": 101318,
+  "São Gonçalo|Tribobó|800MB": 101319,
 
   // Rio de Janeiro — Região Covanca (Tanque, Jacarepaguá, Pechincha, Taquara, Freguesia, Praça Seca) — POP 42
   "Rio de Janeiro|Tanque|300MB":      101312,
