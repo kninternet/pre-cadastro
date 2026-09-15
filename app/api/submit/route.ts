@@ -55,6 +55,16 @@ function parseLogradouro(logradouro: string) {
   return { logradouro, numero: 'S/N', complemento: null }
 }
 
+function sanitizePontoReferencia(ref: string): string {
+  // SGP aceita apenas letras, espaços, hífen e apóstrofo
+  return ref
+    .replace(/[()#]/g, '')
+    .replace(/[^a-zA-ZÀ-ÿ0-9\s\-']/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 100)
+}
+
 export async function POST(request: Request) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let body: Record<string, any>
@@ -107,12 +117,21 @@ export async function POST(request: Request) {
   const clientFlagCpfDup = cpf_duplicado === true || cpf_duplicado === 'true'
 
   // ── Re-verificação server-side do CPF no SGP ────────────────────────────────
-  // O front (step-2) já checa duplicidade em tempo real via /api/internal/check-cpf,
-  // mas esse resultado NUNCA deve ser a única barreira: o cliente pode manipular o
-  // payload, e falhas de rede/timeout no meio do caminho não podem virar cadastro
-  // duplicado silencioso no SGP. Re-checamos aqui antes de decidir criar o cliente.
   const cpfCheckServer = await checkCpfInSgp(cpfLimpo)
   const isCpfDup = clientFlagCpfDup || (cpfCheckServer.ok && cpfCheckServer.found)
+
+  // ── Ponto de referência ────────────────────────────────────────────────────
+  // Versão completa (DB + e-mail): com acentos, parênteses, #
+  // Versão sanitizada (SGP): só letras, números, espaços, hífen e apóstrofo
+  const pontoRefCompleto = isMgm && indicador_nome
+    ? `INDICAÇÃO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} (${indicador_cpf || indicador_valor || 'nome'}) - lead #${dbLeadId}`
+    : 'suprimido'
+
+  const pontoRefSgp = sanitizePontoReferencia(
+    isMgm && indicador_nome
+      ? `INDICACAO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} - lead ${dbLeadId}`
+      : 'suprimido'
+  )
 
   // ── 1. Banco — endereço (step 3) ───────────────────────────────────────────
   if (dbLeadId) {
@@ -126,9 +145,7 @@ export async function POST(request: Request) {
         [
           cep.replace(/\D/g, ''), logradouro, numero, complemento ?? null,
           bairro, cidade, uf,
-          isMgm && indicador_nome
-            ? `INDICAÇÃO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} (${indicador_cpf || indicador_valor || 'nome'}) - lead #${dbLeadId}`
-            : 'suprimido',
+          pontoRefCompleto,
           dbLeadId,
         ]
       )
@@ -148,9 +165,7 @@ export async function POST(request: Request) {
     bairro, cidade,
     cep: cep.replace(/\D/g, ''),
     uf, pais: 'BR',
-    pontoreferencia: isMgm && indicador_nome
-      ? `INDICAÇÃO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} (${indicador_cpf || indicador_valor || 'nome'}) - lead #${dbLeadId}`
-      : 'suprimido',
+    pontoreferencia: pontoRefSgp,
   }
 
   // Detecta PF (11 dígitos) ou PJ (14 dígitos)
@@ -266,8 +281,6 @@ export async function POST(request: Request) {
   }
 
   // ── 5. E-mail atendimento ──────────────────────────────────────────────────
-  // O e-mail sai ~30s após o submit em todas as situações; o título carrega
-  // CPF/CNPJ, duplicidade e o status real de otp_verificado no banco.
   const sendAtendimentoEmail = async (emailConfirmado: boolean) => {
     try {
       const now = new Date()
@@ -279,7 +292,6 @@ export async function POST(request: Request) {
       const origemLabel = origem ?? 'web'
       const docTipo = tipoPessoa === 'J' ? 'CNPJ' : 'CPF'
       const docLabel = isCpfDup ? `${docTipo} Duplicado` : docTipo
-      // Atendimento não passa por OTP — nunca sinaliza. Web sem OTP: "OTP = False" ao fim.
       const otpFlag = origem !== 'atendimento' && !emailConfirmado ? ' - OTP = False' : ''
       const mgmTag = isMgm ? ' #amigodefibra' : ''
       const subject = `Novo Cadastro${mgmTag} - ${docLabel} - ${nome} - ${origemLabel}${otpFlag}`
@@ -313,7 +325,7 @@ export async function POST(request: Request) {
         `Bairro: ${bairro}`,
         `Cidade/UF: ${cidade} - ${uf}`,
         `CEP: ${cep}`,
-        `Referência: ${isMgm && indicador_nome ? `INDICAÇÃO AMIGO DE FIBRA - indicado por ${indicador_primeiro_nome || indicador_nome} (${indicador_cpf || indicador_valor || 'nome'}) - lead #${dbLeadId}` : 'suprimido'}`,
+        `Referência: ${pontoRefCompleto}`,
         ...(isMgm ? [
           ``,
           `--- INDICAÇÃO (AMIGO DE FIBRA) ---`,
@@ -374,8 +386,6 @@ export async function POST(request: Request) {
     }
   }
 
-  // Janela única de 30s para todas as situações (web, atendimento, duplicados):
-  // consulta otp_verificado no banco e monta o título com o status real do e-mail.
   setTimeout(async () => {
     let confirmado = false
     try {
