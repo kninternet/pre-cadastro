@@ -490,6 +490,8 @@ export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
 }
 // ── MGM: Post-submit referrer validation ─────────────────────────────────
 function MgmReferrerFollow({ indicadorNome }: { indicadorNome: string }) {
+  const [nomeEditavel, setNomeEditavel] = useState(indicadorNome)
+  const [editando, setEditando] = useState(false)
   const [tipo, setTipo] = useState('')
   const [valor, setValor] = useState('')
   const [loading, setLoading] = useState(false)
@@ -537,9 +539,39 @@ function MgmReferrerFollow({ indicadorNome }: { indicadorNome: string }) {
 
   return (
     <div className="mt-6 w-full max-w-[380px] bg-muted border border-border rounded-xl p-4 text-left">
-      <p className="text-sm font-semibold text-foreground mb-1">
-        🤝 Indicado por {indicadorNome}
-      </p>
+      <div className="flex items-center justify-between mb-1">
+        {editando ? (
+          <div className="flex-1 flex items-center gap-2">
+            <span className="text-sm">🤝</span>
+            <input
+              type="text"
+              value={nomeEditavel}
+              onChange={(e) => setNomeEditavel(e.target.value)}
+              className="flex-1 h-[34px] px-2.5 bg-input border border-border rounded-lg text-sm outline-none focus:border-primary"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') setEditando(false) }}
+            />
+            <button
+              onClick={() => setEditando(false)}
+              className="text-xs font-semibold text-primary hover:underline"
+            >
+              OK
+            </button>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm font-semibold text-foreground">
+              🤝 Indicado por {nomeEditavel}
+            </p>
+            <button
+              onClick={() => setEditando(true)}
+              className="text-xs font-medium text-primary hover:underline ml-2"
+            >
+              Editar
+            </button>
+          </>
+        )}
+      </div>
       <p className="text-xs text-muted-foreground mb-3">
         Para garantir o mês grátis do seu amigo, informe o CPF, e-mail ou WhatsApp dele:
       </p>
