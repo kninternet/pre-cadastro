@@ -28,15 +28,21 @@ import { CIDADE_SLUG_TO_NOME, BAIRRO_SLUG_TO_NOME, PLANO_SLUG_TO_VELOCIDADE_PREC
 
 type FlowState = "form" | "review" | "otp" | "done"
 
-export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
+export function PreCadastroForm({ mgm = false, mgmVisitanteNome, mgmIndicadorNome }: {
+  mgm?: boolean
+  mgmVisitanteNome?: string
+  mgmIndicadorNome?: string
+}) {
   const searchParams = useSearchParams()
   const [currentStep, setCurrentStep] = useState(1)
 
   // ── MGM — Indicação ───────────────────────────────────────────────────────
-  const [mgmModalDone, setMgmModalDone] = useState(false)
+  // Se a page já coletou os nomes via modal próprio, pula o modal interno.
+  const mgmPreFilled = mgm && !!mgmVisitanteNome && !!mgmIndicadorNome
+  const [mgmModalDone, setMgmModalDone] = useState(mgmPreFilled)
   const [indicacao, setIndicacao] = useState<IndicacaoData>({
-    indicador_nome: '',
-    indicador_primeiro_nome: '',
+    indicador_nome: mgmIndicadorNome ?? '',
+    indicador_primeiro_nome: mgmIndicadorNome?.split(' ')[0] ?? '',
     indicador_tipo: '',
     indicador_valor: '',
     indicador_cpf: '',
@@ -51,7 +57,7 @@ export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
   const [editandoDeReview, setEditandoDeReview] = useState(false)
 
   // ── Step 1 — Dados pessoais ─────────────────────────────────────────────────
-  const [nome, setNome] = useState("")
+  const [nome, setNome] = useState(mgmVisitanteNome ?? "")
   const [email, setEmail] = useState("")
   const [whatsapp, setWhatsapp] = useState("")
 
@@ -337,7 +343,7 @@ export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
   if (flowState === "review") {
     return (
       <>
-        <WelcomeModal />
+        {!mgm && <WelcomeModal />}
         <ProgressBar currentStep={4} />
         <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
           <ReviewStep
@@ -349,7 +355,6 @@ export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
             plano={plano}
             vencimento={vencimento}
             cpf={cpf.replace(/\D/g, "")}
-            aceitaTaxaInstalacao={aceitaTaxaInstalacao}
             logradouro={logradouro}
             numero={numero}
             complemento={complemento}
@@ -370,7 +375,7 @@ export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
   if (flowState === "otp") {
     return (
       <>
-        <WelcomeModal />
+        {!mgm && <WelcomeModal />}
         <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
           <OtpVerification
             email={email}
@@ -386,7 +391,7 @@ export function PreCadastroForm({ mgm = false }: { mgm?: boolean }) {
   if (flowState === "done") {
     return (
       <>
-        <WelcomeModal />
+        {!mgm && <WelcomeModal />}
         <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
           <div className="flex flex-col items-center text-center p-8 md:p-12">
             <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-6">

@@ -56,7 +56,8 @@ function parseLogradouro(logradouro: string) {
 }
 
 export async function POST(request: Request) {
-  let body: Record<string, string>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let body: Record<string, any>
 
   try {
     body = await request.json()
@@ -78,7 +79,20 @@ export async function POST(request: Request) {
     mgm: isMgm,
     indicador_nome, indicador_primeiro_nome, indicador_tipo,
     indicador_valor, indicador_cpf, indicador_cliente_id, indicador_validado,
-  } = body
+  } = body as {
+    lead_id?: string
+    nome: string; cpfcnpj: string; email: string; celular: string
+    logradouro: string; bairro: string; cidade: string; uf: string; cep: string
+    observacao: string; token?: string
+    cpf_duplicado?: boolean | string; origem?: string
+    client_ip_address?: string; client_user_agent?: string
+    fbp?: string; ga_client_id?: string; session_id?: string
+    mgm?: boolean
+    indicador_nome?: string; indicador_primeiro_nome?: string
+    indicador_tipo?: string; indicador_valor?: string
+    indicador_cpf?: string; indicador_cliente_id?: number | null
+    indicador_validado?: boolean
+  }
 
   const { logradouro, numero, complemento } = parseLogradouro(logradouroRaw ?? '')
   const vencimento = observacao?.match(/Vencimento:\s*Dia\s*(\S+)/)?.[1] ?? ''
@@ -90,7 +104,7 @@ export async function POST(request: Request) {
 
   const dbLeadId = lead_id ? parseInt(lead_id) : null
   const cpfLimpo = cpfcnpj.replace(/\D/g, '')
-  const clientFlagCpfDup = cpf_duplicado === 'true' || cpf_duplicado === true as unknown as string
+  const clientFlagCpfDup = cpf_duplicado === true || cpf_duplicado === 'true'
 
   // ── Re-verificação server-side do CPF no SGP ────────────────────────────────
   // O front (step-2) já checa duplicidade em tempo real via /api/internal/check-cpf,

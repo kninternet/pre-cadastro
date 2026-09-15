@@ -1,8 +1,3 @@
-import { exec } from 'child_process'
-import { promisify } from 'util'
-
-const execAsync = promisify(exec)
-
 export function validarCPF(c: string): boolean {
   if (/^(\d)\1{10}$/.test(c)) return false
   const calc = (x: number) => {
@@ -39,12 +34,34 @@ export async function checkCpfInSgp(cpfRaw: string): Promise<CheckCpfResult> {
   const base = process.env.SGP_BASE_URL ?? 'https://netecom.sgplocal.com.br'
 
   try {
-    const { stdout } = await execAsync(
-      `curl -s -X GET '${base}/api/crm/cliente/contratos/?cpfcnpj=${cpf}' --form 'app="${app}"' --form 'token="${token}"'`,
-      { timeout: 6000 }
-    )
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 6000)
 
-    const data = JSON.parse(stdout) as Record<string, unknown>
+    // SGP espera multipart/form-data com app e token + query param cpfcnpj
+    const formData = new FormData()
+    formData.append('app', app)
+    formData.append('token', token)
+
+    const response = await fetch(
+      `${base}/api/crm/cliente/contratos/?cpfcnpj=${cpf}`,
+      { method: 'GET', signal: controller.signal }
+    ).finally(() => clearTimeout(timeout))
+
+    // Fallback: se GET sem auth falhar, tenta POST com form-data
+    // (mantém compatibilidade com o endpoint SGP que aceita --form)
+    let data: Record<string, unknown>
+    if (!response.ok) {
+      const postController = new AbortController()
+      const postTimeout = setTimeout(() => postController.abort(), 6000)
+      const postRes = await fetch(
+        `${base}/api/crm/cliente/contratos/?cpfcnpj=${cpf}`,
+        { method: 'POST', body: formData, signal: postController.signal }
+      ).finally(() => clearTimeout(postTimeout))
+      data = await postRes.json() as Record<string, unknown>
+    } else {
+      data = await response.json() as Record<string, unknown>
+    }
+
     console.log('[SGP CHECK-CPF RESPONSE]', JSON.stringify(data))
 
     if (data.errors) {

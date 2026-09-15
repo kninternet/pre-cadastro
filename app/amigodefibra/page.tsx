@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useCallback } from "react"
 import Image from "next/image"
-import { Users, X } from "lucide-react"
+import { Users } from "lucide-react"
 import { PreCadastroForm } from "@/components/pre-cadastro/pre-cadastro-form"
 
 const MGM_STORAGE_KEY = "kn_mgm_indicador"
@@ -26,7 +26,7 @@ function MgmWelcomeModal({ onClose }: { onClose: (data: { visitante: string; ind
       const t = setTimeout(() => setOpen(true), 400)
       return () => clearTimeout(t)
     }
-  }, [])
+  }, [onClose])
 
   const handleContinue = useCallback(() => {
     if (!visitante.trim()) return
@@ -204,6 +204,7 @@ export default function AmigoFibraPage() {
           >
             <PreCadastroForm
               mgm
+              mgmVisitanteNome={modalData?.visitante}
               mgmIndicadorNome={modalData?.indicador}
             />
           </Suspense>

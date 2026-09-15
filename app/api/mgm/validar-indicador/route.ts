@@ -1,8 +1,4 @@
 import { NextResponse } from 'next/server'
-import { exec } from 'child_process'
-import { promisify } from 'util'
-
-const execAsync = promisify(exec)
 
 function capitalizeName(name: string): string {
   return name
@@ -25,34 +21,38 @@ export async function POST(request: Request) {
     const base = process.env.SGP_BASE_URL ?? 'https://netecom.sgplocal.com.br'
 
     // Monta o filtro conforme o tipo
-    let filtro = ''
+    const body: Record<string, string> = { app, token, status: '1' }
+
     if (tipo === 'cpf') {
       const cpfLimpo = valor.replace(/\D/g, '')
       if (cpfLimpo.length !== 11) {
         return NextResponse.json({ found: false, message: 'CPF inválido' }, { status: 400 })
       }
-      filtro = `"cpfcnpj": "${cpfLimpo}"`
+      body.cpfcnpj = cpfLimpo
     } else if (tipo === 'email') {
-      filtro = `"email": "${valor.trim().toLowerCase()}"`
+      body.email = valor.trim().toLowerCase()
     } else if (tipo === 'telefone') {
       const telLimpo = valor.replace(/\D/g, '')
       if (telLimpo.length < 10) {
         return NextResponse.json({ found: false, message: 'Telefone inválido' }, { status: 400 })
       }
-      filtro = `"telefone": "${telLimpo}"`
+      body.telefone = telLimpo
     } else {
       return NextResponse.json({ found: false, message: 'Tipo inválido' }, { status: 400 })
     }
 
     // Consulta SGP via URA consultacliente — busca contratos ativos
-    const payload = `{"app":"${app}","token":"${token}",${filtro},"status":"1"}`
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
 
-    const { stdout } = await execAsync(
-      `curl -s -X POST '${base}/api/ura/consultacliente/' -H 'Content-Type: application/json' -d '${payload}'`,
-      { timeout: 8000 }
-    )
+    const sgpRes = await fetch(`${base}/api/ura/consultacliente/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeout))
 
-    const data = JSON.parse(stdout) as Record<string, unknown>
+    const data = await sgpRes.json() as Record<string, unknown>
     console.log('[MGM VALIDAR-INDICADOR]', tipo, valor, JSON.stringify(data).slice(0, 200))
 
     // Resposta do SGP: { msg: "Contrato(s) Localizado(s)", contratos: [...] }
