@@ -15,7 +15,6 @@ function MgmWelcomeModal({ onClose }: { onClose: (data: { visitante: string; ind
   useEffect(() => {
     const saved = sessionStorage.getItem(MGM_STORAGE_KEY)
     if (saved) {
-      // Already filled this session — skip modal
       try {
         const data = JSON.parse(saved)
         onClose(data)
@@ -124,56 +123,62 @@ function MgmWelcomeModal({ onClose }: { onClose: (data: { visitante: string; ind
   )
 }
 
-function Header({ indicadorNome }: { indicadorNome?: string }) {
+function HeroBackground() {
   return (
-    <header className="w-full max-w-[680px] flex flex-col items-center justify-center py-6 pb-10 text-center gap-3">
+    <div className="fixed inset-0 z-0" aria-hidden="true">
+      {/* Desktop */}
       <Image
-        src="/logo-kn-internet.jpeg"
-        alt="KN Internet"
-        width={200}
-        height={120}
-        className="object-contain"
+        src="/hero-amigo-desktop.jpg"
+        alt=""
+        fill
         priority
+        className="object-cover object-center hidden md:block"
+        sizes="100vw"
+        quality={85}
       />
+      {/* Mobile */}
+      <Image
+        src="/hero-amigo-mobile.jpg"
+        alt=""
+        fill
+        priority
+        className="object-cover object-top block md:hidden"
+        sizes="100vw"
+        quality={85}
+      />
+      {/* Overlay: gradient escuro na base pra legibilidade do form */}
       <div
-        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold tracking-wider text-white"
-        style={{ background: "var(--primary)" }}
-      >
-        AMIGO DE FIBRA
-      </div>
-      {indicadorNome && (
-        <p className="text-[14px] text-foreground/60 font-medium flex items-center gap-1.5">
-          🤝 Indicado por <strong className="text-foreground">{indicadorNome}</strong>
-        </p>
-      )}
-    </header>
+        className="absolute inset-0"
+        style={{
+          background: [
+            "linear-gradient(to bottom, rgba(0,20,40,0.35) 0%, rgba(0,20,40,0.55) 40%, rgba(0,15,30,0.85) 75%, rgba(0,10,25,0.95) 100%)",
+          ].join(", "),
+        }}
+      />
+    </div>
   )
 }
 
-function BackgroundDecoration() {
+function Header({ indicadorNome }: { indicadorNome?: string }) {
   return (
-    <>
-      <div className="page-bg">
-        <div className="dot-grid" />
+    <header className="w-full max-w-[680px] flex flex-col items-center justify-center py-6 pb-8 text-center gap-3">
+      <Image
+        src="/logo-kn-internet.jpeg"
+        alt="KN Internet"
+        width={180}
+        height={100}
+        className="object-contain drop-shadow-lg"
+        priority
+      />
+      <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold tracking-wider text-white bg-primary/90 backdrop-blur-sm shadow-lg">
+        AMIGO DE FIBRA
       </div>
-      <svg
-        className="fiber-deco"
-        viewBox="0 0 1200 800"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-        <defs>
-          <linearGradient id="fg" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#f97316" stopOpacity="0" />
-            <stop offset="50%" stopColor="#f97316" stopOpacity="1" />
-            <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d="M0,400 Q300,250 600,400 T1200,400" fill="none" stroke="url(#fg)" strokeWidth="2" />
-        <path d="M0,500 Q300,350 600,500 T1200,500" fill="none" stroke="url(#fg)" strokeWidth="1.5" />
-        <path d="M0,300 Q300,450 600,300 T1200,300" fill="none" stroke="url(#fg)" strokeWidth="1" />
-      </svg>
-    </>
+      {indicadorNome && (
+        <p className="text-[14px] text-white/70 font-medium flex items-center gap-1.5">
+          🤝 Indicado por <strong className="text-white">{indicadorNome}</strong>
+        </p>
+      )}
+    </header>
   )
 }
 
@@ -188,7 +193,7 @@ export default function AmigoFibraPage() {
 
   return (
     <>
-      <BackgroundDecoration />
+      <HeroBackground />
       <div className="relative z-10 min-h-screen flex flex-col items-center px-4 py-8 pb-16">
         <Header indicadorNome={modalData?.indicador} />
 
@@ -197,7 +202,7 @@ export default function AmigoFibraPage() {
         {showForm && (
           <Suspense
             fallback={
-              <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden p-8 flex items-center justify-center">
+              <div className="w-full max-w-[680px] bg-card/90 backdrop-blur-md rounded-2xl shadow-xl border border-white/10 overflow-hidden p-8 flex items-center justify-center">
                 <div className="w-8 h-8 border-2 border-border border-t-primary rounded-full animate-spin" />
               </div>
             }
@@ -210,7 +215,7 @@ export default function AmigoFibraPage() {
           </Suspense>
         )}
 
-        <footer className="mt-8 text-center text-[13px] text-muted-foreground">
+        <footer className="mt-8 text-center text-[13px] text-white/50">
           © {new Date().getFullYear()} KN Internet · Todos os direitos reservados ·{" "}
           <a
             href="https://wa.me/5521967797580"
