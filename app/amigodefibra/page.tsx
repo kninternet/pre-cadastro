@@ -78,9 +78,7 @@ function MgmWelcomeModal({ onClose }: { onClose: (data: { visitante: string; ind
 
         <div className="px-6 py-5 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-[13px] font-semibold text-foreground">
-              Qual o seu nome?
-            </label>
+            <label className="text-[13px] font-semibold text-foreground">Qual o seu nome?</label>
             <input
               type="text"
               value={visitante}
@@ -91,7 +89,6 @@ function MgmWelcomeModal({ onClose }: { onClose: (data: { visitante: string; ind
               className="w-full h-[46px] px-3.5 bg-input border-[1.5px] border-border rounded-lg text-[15px] text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:shadow-[0_0_0_3px_rgba(249,115,22,0.12)]"
             />
           </div>
-
           <div className="flex flex-col gap-1.5">
             <label className="text-[13px] font-semibold text-foreground flex items-center gap-1.5">
               <Users className="w-4 h-4 text-primary" />
@@ -106,7 +103,6 @@ function MgmWelcomeModal({ onClose }: { onClose: (data: { visitante: string; ind
               className="w-full h-[46px] px-3.5 bg-input border-[1.5px] border-border rounded-lg text-[15px] text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:shadow-[0_0_0_3px_rgba(249,115,22,0.12)]"
             />
           </div>
-
           <button
             onClick={handleContinue}
             disabled={!visitante.trim()}
@@ -123,12 +119,12 @@ function MgmWelcomeModal({ onClose }: { onClose: (data: { visitante: string; ind
 
 function FormHeader({ indicadorNome }: { indicadorNome?: string }) {
   return (
-    <div className="flex flex-col items-center text-center gap-3 mb-4">
+    <div className="flex flex-col items-center text-center gap-2.5 mb-3">
       <Image
         src="/logo-kn-internet.jpeg"
         alt="KN Internet"
-        width={150}
-        height={85}
+        width={130}
+        height={75}
         className="object-contain drop-shadow-lg"
         priority
       />
@@ -136,7 +132,7 @@ function FormHeader({ indicadorNome }: { indicadorNome?: string }) {
         AMIGO DE FIBRA
       </div>
       {indicadorNome && (
-        <p className="text-[14px] text-white/70 font-medium flex items-center gap-1.5">
+        <p className="text-[13px] text-white/70 font-medium flex items-center gap-1.5">
           🤝 Indicado por <strong className="text-white">{indicadorNome}</strong>
         </p>
       )}
@@ -155,17 +151,20 @@ export default function AmigoFibraPage() {
 
   return (
     <>
-      {/* ── Background fixo: imagem + overlay ────────────────────────── */}
+      {/* ── Background fixo ──────────────────────────────────────────── */}
       <div className="fixed inset-0 z-0" aria-hidden="true">
+        {/* Desktop: imagem espelhada (personagens à direita via object-position) */}
         <Image
           src="/hero-amigo-desktop.jpg"
           alt=""
           fill
           priority
-          className="object-cover object-center hidden md:block"
+          className="object-cover hidden md:block"
           sizes="100vw"
           quality={85}
+          style={{ objectPosition: "right center", transform: "scaleX(-1)" }}
         />
+        {/* Mobile */}
         <Image
           src="/hero-amigo-mobile.jpg"
           alt=""
@@ -174,45 +173,42 @@ export default function AmigoFibraPage() {
           className="object-cover object-top block md:hidden"
           sizes="100vw"
           quality={85}
+          style={{ transform: "scaleX(-1)" }}
         />
-        {/* Mobile: gradiente forte embaixo pro form */}
+        {/* Mobile overlay */}
         <div
           className="absolute inset-0 block md:hidden"
           style={{
             background: "linear-gradient(to bottom, rgba(0,20,40,0.25) 0%, rgba(0,20,40,0.5) 35%, rgba(0,15,30,0.88) 70%, rgba(0,10,25,0.96) 100%)",
           }}
         />
-        {/* Desktop: gradiente lateral da direita pro painel do form */}
+        {/* Desktop overlay: gradiente da esquerda (form) pra direita (foto respira) */}
         <div
           className="absolute inset-0 hidden md:block"
           style={{
             background: [
-              "linear-gradient(to right, rgba(0,15,30,0.1) 0%, rgba(0,15,30,0.25) 40%, rgba(0,12,25,0.75) 60%, rgba(0,10,22,0.92) 80%, rgba(0,8,20,0.97) 100%)",
-              "linear-gradient(to bottom, rgba(0,20,40,0.15) 0%, rgba(0,15,30,0.3) 100%)",
+              "linear-gradient(to left, rgba(0,15,30,0.1) 0%, rgba(0,15,30,0.25) 35%, rgba(0,12,25,0.75) 55%, rgba(0,10,22,0.93) 75%, rgba(0,8,20,0.97) 100%)",
+              "linear-gradient(to bottom, rgba(0,20,40,0.15) 0%, rgba(0,15,30,0.25) 100%)",
             ].join(", "),
           }}
         />
       </div>
 
+      {/* ── Headline desktop: topo esquerdo sobre a foto ─────────────── */}
+      <div className="fixed top-8 right-10 z-[5] hidden md:block max-w-[380px] text-right">
+        <h1 className="font-heading text-[28px] lg:text-[34px] font-extrabold text-white leading-tight drop-shadow-md">
+          Indique um amigo e ganhe 1 mês grátis.
+        </h1>
+        <p className="mt-2 text-[14px] text-white/55 leading-relaxed">
+          Seu amigo se conecta com a melhor fibra e você ganha um mês de internet por nossa conta.
+        </p>
+      </div>
+
       {/* ── Layout ────────────────────────────────────────────────────── */}
-      {/* Mobile: coluna única centralizada */}
-      {/* Desktop: duas colunas — esquerda vazia (foto respira), direita com form */}
       <div className="relative z-10 min-h-screen flex flex-col md:flex-row">
 
-        {/* Coluna esquerda — desktop only: espaço pra foto */}
-        <div className="hidden md:flex md:w-[45%] lg:w-[50%] flex-col justify-end p-10 pb-12">
-          <div className="max-w-[400px]">
-            <h1 className="font-heading text-[32px] lg:text-[38px] font-extrabold text-white leading-tight drop-shadow-md">
-              Indique um amigo e<br />ganhe 1 mês grátis.
-            </h1>
-            <p className="mt-3 text-[15px] text-white/60 leading-relaxed max-w-[340px]">
-              Seu amigo se conecta com a melhor fibra e você ganha um mês de internet por nossa conta.
-            </p>
-          </div>
-        </div>
-
-        {/* Coluna direita (ou única em mobile) — form */}
-        <div className="flex-1 md:w-[55%] lg:w-[50%] flex flex-col items-center px-4 py-8 pb-16 md:py-6 md:overflow-y-auto md:max-h-screen">
+        {/* Coluna esquerda — form */}
+        <div className="flex-1 md:w-[55%] lg:w-[50%] flex flex-col items-center px-4 py-6 pb-16 md:py-5 md:overflow-y-auto md:max-h-screen">
           <FormHeader indicadorNome={modalData?.indicador} />
 
           {!showForm && <MgmWelcomeModal onClose={handleModalClose} />}
@@ -220,7 +216,7 @@ export default function AmigoFibraPage() {
           {showForm && (
             <Suspense
               fallback={
-                <div className="w-full max-w-[540px] bg-card/90 backdrop-blur-md rounded-2xl shadow-xl border border-white/10 overflow-hidden p-8 flex items-center justify-center">
+                <div className="w-full max-w-[520px] bg-card/90 backdrop-blur-md rounded-2xl shadow-xl border border-white/10 overflow-hidden p-8 flex items-center justify-center">
                   <div className="w-8 h-8 border-2 border-border border-t-primary rounded-full animate-spin" />
                 </div>
               }
@@ -233,7 +229,7 @@ export default function AmigoFibraPage() {
             </Suspense>
           )}
 
-          <footer className="mt-8 text-center text-[12px] text-white/40">
+          <footer className="mt-6 text-center text-[12px] text-white/40">
             © {new Date().getFullYear()} KN Internet · Todos os direitos reservados ·{" "}
             <a
               href="https://wa.me/5521967797580"
@@ -245,6 +241,9 @@ export default function AmigoFibraPage() {
             </a>
           </footer>
         </div>
+
+        {/* Coluna direita — desktop only: foto respira */}
+        <div className="hidden md:block md:w-[45%] lg:w-[50%]" />
       </div>
     </>
   )
