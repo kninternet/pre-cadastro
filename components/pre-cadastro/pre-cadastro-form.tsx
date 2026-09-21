@@ -349,7 +349,7 @@ export function PreCadastroForm({ mgm = false, mgmVisitanteNome, mgmIndicadorNom
       <>
         {!mgm && <WelcomeModal />}
         <ProgressBar currentStep={4} />
-        <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
+        <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden shrink-0">
           <ReviewStep
             nome={nome}
             email={email}
@@ -379,7 +379,7 @@ export function PreCadastroForm({ mgm = false, mgmVisitanteNome, mgmIndicadorNom
   if (flowState === "mgm-validar") {
     return (
       <>
-        <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
+        <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden shrink-0">
           <div className="flex flex-col items-center text-center p-8 md:p-12">
             <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mb-5">
               <span className="text-3xl">🤝</span>
@@ -421,7 +421,7 @@ export function PreCadastroForm({ mgm = false, mgmVisitanteNome, mgmIndicadorNom
     return (
       <>
         {!mgm && <WelcomeModal />}
-        <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
+        <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden shrink-0">
           <OtpVerification
             email={email}
             vencimento={vencimento}
@@ -437,7 +437,7 @@ export function PreCadastroForm({ mgm = false, mgmVisitanteNome, mgmIndicadorNom
     return (
       <>
         {!mgm && <WelcomeModal />}
-        <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
+        <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden shrink-0">
           <div className="flex flex-col items-center text-center p-8 md:p-12">
             <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-6">
               <svg className="w-11 h-11 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -494,7 +494,7 @@ export function PreCadastroForm({ mgm = false, mgmVisitanteNome, mgmIndicadorNom
       ) : null}
       <ProgressBar currentStep={currentStep} />
 
-      <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
+      <div className="w-full max-w-[680px] bg-card rounded-2xl shadow-xl border border-border overflow-hidden shrink-0">
         {currentStep === 1 && (
           <Step1
             nome={nome} setNome={setNome}

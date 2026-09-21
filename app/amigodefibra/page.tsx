@@ -208,7 +208,7 @@ export default function AmigoFibraPage() {
       <div className="relative z-10 min-h-screen flex flex-col md:flex-row">
 
         {/* Coluna esquerda — form */}
-        <div className="flex-1 md:w-[55%] lg:w-[50%] flex flex-col items-center px-4 py-6 pb-16 md:py-5 md:overflow-y-auto md:max-h-screen">
+        <div className="flex-1 md:w-[55%] lg:w-[50%] flex flex-col items-center px-4 py-6 pb-16 md:py-5 md:h-screen md:overflow-y-auto">
           <FormHeader indicadorNome={modalData?.indicador} />
 
           {!showForm && <MgmWelcomeModal onClose={handleModalClose} />}
