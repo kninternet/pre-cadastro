@@ -71,12 +71,23 @@ export function getGaClientId(): string | undefined {
   return parts.length >= 4 ? `${parts[2]}.${parts[3]}` : raw
 }
 
+/** Lê o GA session_id do cookie _ga_<MEASUREMENT_ID> (detectado por padrão, sem depender de env var) */
+export function getGaSessionId(): string | undefined {
+  if (typeof document === 'undefined') return undefined
+  const match = document.cookie.match(/_ga_[A-Z0-9]+=([^;]+)/)
+  if (!match) return undefined
+  // Formato: GS1.1.<session_id>.<contador>.<engaged>...
+  const parts = decodeURIComponent(match[1]).split('.')
+  return parts.length >= 3 ? parts[2] : undefined
+}
+
 /** Monta o bloco de contexto do navegador para enviar ao backend */
 export function getBrowserContext() {
   return {
     client_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
     fbp: getFbp(),
     ga_client_id: getGaClientId(),
+    ga_session_id: getGaSessionId(),
   }
 }
 

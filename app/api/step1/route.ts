@@ -15,7 +15,7 @@ export async function POST(request: Request) {
 
   const {
     session_id, nome, email, whatsapp,
-    client_ip_address, client_user_agent, fbp, ga_client_id,
+    client_ip_address, client_user_agent, fbp, ga_client_id, ga_session_id,
     origem,
     utm_source, utm_medium, utm_campaign, utm_content, utm_term,
   } = body
@@ -77,6 +77,7 @@ export async function POST(request: Request) {
   // ── 3. GA4 — generate_lead ─────────────────────────────────────────────────
   void sendGA4Event({
     clientId: ga_client_id ?? session_id,
+    sessionId: ga_session_id,
     eventName: 'generate_lead',
     params: {
       lead_id: leadId ?? 0,

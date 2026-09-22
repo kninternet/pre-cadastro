@@ -12,6 +12,7 @@
 
 interface GA4EventParams {
   clientId: string           // _ga cookie ou fallback gerado no frontend
+  sessionId?: string         // _ga_<ID> cookie — ancora o evento na sessão real do navegador
   eventName: string          // ex: 'generate_lead', 'begin_checkout'
   params?: Record<string, string | number | boolean>
 }
@@ -34,7 +35,9 @@ export async function sendGA4Event(event: GA4EventParams): Promise<void> {
         name:   event.eventName,
         params: {
           engagement_time_msec: 1,
-          session_id: Date.now().toString(),
+          // Usa o session_id real da sessão do navegador quando disponível.
+          // Sem isso, o GA4 cria uma sessão nova sem contexto de UTM/página (bug corrigido em set/2026).
+          session_id: event.sessionId ?? Date.now().toString(),
           ...event.params,
         },
       },
@@ -53,7 +56,7 @@ export async function sendGA4Event(event: GA4EventParams): Promise<void> {
 
     // GA4 MP retorna 204 em sucesso — sem body
     if (res.ok) {
-      console.log(`[GA4 MP] ${event.eventName} enviado — client_id: ${event.clientId}`)
+      console.log(`[GA4 MP] ${event.eventName} enviado — client_id: ${event.clientId} — session_id: ${event.sessionId ?? '(fallback)'}`)
     } else {
       console.error('[GA4 MP ERROR]', res.status, await res.text())
     }
