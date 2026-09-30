@@ -35,6 +35,25 @@ function sanitizarNumero(valor: string): string {
   return match ? match[1] : (valor.trim() || 'S/N')
 }
 
+// ── Sanitização para o SGP (validado por smoke test) ─────────────────────────
+// numero: só dígitos (SGP rejeita 33A, 33#, S/N). Sem número → '0'.
+function numeroParaSgp(valor: string): string {
+  return valor.replace(/\D/g, '') || '0'
+}
+
+// complemento: só letras e números; qualquer outro caractere vira espaço.
+function complementoParaSgp(valor: string | null | undefined): string {
+  return (valor ?? '')
+    .replace(/[^a-zA-ZÀ-ÿ0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// celular: SGP só aceita DDD + 9 + 8 dígitos (11 dígitos, 3º dígito = 9).
+function celularValidoSgp(digits: string): boolean {
+  return /^\d{2}9\d{8}$/.test(digits)
+}
+
 function parseLogradouro(logradouro: string) {
   const match = logradouro.match(/^(.+?),\s*(\S+)(?:\s*-\s*(.+))?$/)
   if (match) {
@@ -52,7 +71,7 @@ function parseLogradouro(logradouro: string) {
       complemento: null,
     }
   }
-  return { logradouro, numero: 'S/N', complemento: null }
+  return { logradouro, numero: '0', complemento: null }
 }
 
 function sanitizePontoReferencia(ref: string): string {
@@ -158,9 +177,12 @@ export async function POST(request: Request) {
   let sgpClienteId: number | null = null
   let sgpMessage = isCpfDup ? 'CPF duplicado — encaminhado ao atendimento' : 'Erro no cadastro'
 
+  const numeroSgp = numeroParaSgp(numero)
+  const complementoSgp = complementoParaSgp(complemento)
+
   const enderecoSgp = {
-    logradouro, numero,
-    complemento: complemento ?? '',
+    logradouro, numero: numeroSgp,
+    complemento: complementoSgp,
     bairro, cidade,
     cep: cep.replace(/\D/g, ''),
     uf, pais: 'BR',
@@ -173,9 +195,18 @@ export async function POST(request: Request) {
   if (!isCpfDup) {
     try {
       const sgpEndpoint = tipoPessoa === 'J' ? '/api/crm/cliente/J' : '/api/crm/cliente/F'
-      // Celular é opcional no endpoint PJ e o SGP só aceita 11 dígitos nele.
-      // Com 10 dígitos (fixo), omitimos o campo em vez de mandar valor rejeitado.
+      // SGP só aceita celular DDD + 9 + 8 dígitos. Qualquer outro formato
+      // (fixo, 8 dígitos sem 9) é omitido do campo celular e o número original
+      // segue na observação, para não bloquear o cadastro (cliente_id null).
       const celularSgp = sanitizePhoneForSGP(celular)
+      const celularOk = celularValidoSgp(celularSgp)
+
+      const observacaoSgp = [
+        !celularOk && celularSgp ? `WhatsApp informado: ${celularSgp}` : '',
+        numeroSgp !== (numero ?? '').trim() ? `Número informado: ${numero}` : '',
+        complementoSgp !== (complemento ?? '').trim() ? `Complemento informado: ${complemento}` : '',
+        isMgm && indicador_nome ? `AMIGO DE FIBRA - Indicado por: ${indicador_nome}` : '',
+      ].filter(Boolean).join(' | ')
       const sgpPayload = tipoPessoa === 'J'
         ? {
             app: process.env.SGP_APP ?? '',
@@ -183,7 +214,8 @@ export async function POST(request: Request) {
             nome,
             cpfcnpj: cpfLimpo,
             email,
-            ...(celularSgp.length === 11 ? { celular: celularSgp } : {}),
+            ...(celularOk ? { celular: celularSgp } : {}),
+            ...(observacaoSgp ? { observacao: observacaoSgp } : {}),
             respempresa: nome,
             endereco: enderecoSgp,
           }
@@ -193,7 +225,8 @@ export async function POST(request: Request) {
             nome,
             cpfcnpj: cpfLimpo,
             email,
-            celular: sanitizePhoneForSGP(celular),
+            ...(celularOk ? { celular: celularSgp } : {}),
+            ...(observacaoSgp ? { observacao: observacaoSgp } : {}),
             endereco: enderecoSgp,
           }
 

@@ -409,7 +409,7 @@ export function PreCadastroForm({ mgm = false, mgmVisitanteNome, mgmIndicadorNom
               onClick={() => { setFlowState("otp"); window.scrollTo({ top: 0, behavior: "smooth" }) }}
               className="mt-5 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
-              Pular e confirmar e-mail →
+              Confirmar e-mail →
             </button>
           </div>
         </div>
