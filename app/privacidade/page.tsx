@@ -112,6 +112,7 @@ export default function PrivacidadePage() {
             <ul className="list-disc pl-5 space-y-1">
               <li><strong>SGP (TSMX Tecnologia):</strong> sistema de gestão de provedores utilizado para gerenciar seu cadastro e contrato.</li>
               <li><strong>Meta (Facebook/Instagram) e Google:</strong> plataformas de análise e publicidade, mediante seu consentimento, para medição de campanhas.</li>
+              <li><strong>Plataforma de atendimento (chat do site):</strong> ferramenta utilizada para responder às mensagens que você nos envia pelo chat.</li>
             </ul>
             <p>
               Não vendemos nem cedemos seus dados pessoais a terceiros para fins não relacionados à prestação do serviço.
