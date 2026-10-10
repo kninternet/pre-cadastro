@@ -14,6 +14,11 @@ const pool = new Pool({
   idleTimeoutMillis: 10000,
 })
 
+// POPs da Viva Net (MJP TELECOM): o e-mail ao cliente sai com a marca e o remetente da Viva.
+const POPS_VIVA = (process.env.VIVA_POPS ?? '100072').split(',').map((p) => Number(p.trim())).filter(Boolean)
+// SMTP da Viva (Mailgun, domínio mg.vivanettelecom.com.br): sem ele, o e-mail da Viva não sai pelo SMTP da KN.
+const mailerViva = process.env.VIVA_SMTP_URL ? nodemailer.createTransport(process.env.VIVA_SMTP_URL) : null
+
 const mailer = nodemailer.createTransport({
   host: 'smtp.hostinger.com',
   port: 465,
@@ -437,10 +442,14 @@ export async function POST(request: Request) {
   // ── 5b. E-mail cliente (todas as origens) ───────────────────────────────────
   if (email && !isCpfDup) {
     try {
-      await mailer.sendMail({
-        from: `"KN Internet" <${process.env.SMTP_USER}>`,
+      const popCliente = getPopPortador(cidade_cobertura, bairro_cobertura)?.pop_id
+      const viva = POPS_VIVA.includes(Number(popCliente))
+      if (viva && !mailerViva) throw new Error('VIVA_SMTP_URL não configurado: e-mail da Viva não enviado')
+      await (viva ? mailerViva! : mailer).sendMail({
+        from: viva ? '"Viva Net Telecom" <atendimento@vivanettelecom.com.br>' : `"KN Internet" <${process.env.SMTP_USER}>`,
+        ...(viva && { replyTo: 'atendimento@vivanettelecom.com.br' }),
         to: email,
-        subject: `${nome.split(' ')[0]}, seu cadastro KN Internet foi recebido!`,
+        subject: `${nome.split(' ')[0]}, seu cadastro ${viva ? 'Viva Net' : 'KN Internet'} foi recebido!`,
         html: buildEmailClienteHtml({
           nome,
           plano_velocidade,
@@ -448,6 +457,7 @@ export async function POST(request: Request) {
           vencimento,
           cidade_cobertura,
           bairro_cobertura,
+          marca: viva ? 'viva' : 'kn',
         }),
       })
     } catch (err) {
