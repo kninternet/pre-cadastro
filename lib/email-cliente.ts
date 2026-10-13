@@ -76,7 +76,7 @@ export function buildEmailClienteHtml({
                         </td></tr>
                         <tr><td style="padding:6px 0;">
                           <span style="color:#888888;font-family:Arial,sans-serif;font-size:12px;">Taxa de instalação</span><br>
-                          <strong style="font-family:Arial,sans-serif;font-size:15px;color:#0d1f3c;">R$ 150,00 via Pix</strong>
+                          <strong style="font-family:Arial,sans-serif;font-size:15px;color:#0d1f3c;">${taxaInstalacao(cidade_cobertura, bairro_cobertura)}</strong>
                         </td></tr>
                       </tbody>
                     </table>
@@ -106,4 +106,16 @@ export function buildEmailClienteHtml({
   </table>
 </body>
 </html>`
+}
+
+
+// Taxa de instalação por região. Região Covanca (RJ) = R$ 160,00; demais = padrão KN.
+const TAXA_PADRAO = 'R$ 150,00 via Pix'
+const TAXA_REGIAO_COVANCA = 'R$ 160,00 via Pix'
+const BAIRROS_REGIAO_COVANCA = ['tanque', 'jacarepagua', 'pechincha', 'taquara', 'freguesia', 'praca seca']
+
+export function taxaInstalacao(cidade: string, bairro: string): string {
+  const norm = (t: string) => (t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+  const regiaoCovanca = norm(cidade) === 'rio de janeiro' && BAIRROS_REGIAO_COVANCA.some((b) => norm(bairro).includes(b))
+  return regiaoCovanca ? TAXA_REGIAO_COVANCA : TAXA_PADRAO
 }

@@ -5,7 +5,7 @@ import { sendCAPIEvent } from '@/lib/meta-capi'
 import { sendGA4Event } from '@/lib/ga4-mp'
 import { getPopPortador, getPlanoId } from '@/lib/data'
 import { sanitizePhoneForSGP } from '@/lib/formatters'
-import { buildEmailClienteHtml } from '@/lib/email-cliente'
+import { buildEmailClienteHtml, taxaInstalacao } from '@/lib/email-cliente'
 import { checkCpfInSgp } from '@/lib/sgp-client'
 
 const pool = new Pool({
@@ -372,7 +372,7 @@ export async function POST(request: Request) {
         `Bairro cobertura: ${bairro_cobertura}`,
         `Plano: ${plano_velocidade} - ${plano_preco}`,
         `Vencimento: Dia ${vencimento}`,
-        `Taxa de instalação: R$ 150,00 via Pix`,
+        `Taxa de instalação: ${taxaInstalacao(cidade_cobertura, bairro_cobertura)}`,
         `POP ID: ${pop_id}`,
         `Portador ID: ${portador_id}`,
         `Plano ID SGP: ${planoId}`,
