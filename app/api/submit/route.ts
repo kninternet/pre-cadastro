@@ -88,6 +88,26 @@ function sanitizePontoReferencia(ref: string): string {
     .slice(0, 100)
 }
 
+// Aceita número depois da vírgula mesmo com complemento colado ("1779 casa 1 - Casa", "Lote 3b", "Número 28").
+const PALAVRAS_COMPLEMENTO = /^(casa|apto?|apart(amento)?|bloco|bl|sala|loja|fundos|quadra|qd|cj|conjunto)$/i
+
+function parseLogradouroTolerante(raw: string): { logradouro: string; numero: string; complemento: string | null } | null {
+  const s = raw.trim()
+  const i = s.indexOf(',')
+  if (i <= 0) return null
+  const rua = s.slice(0, i).trim()
+  const tokens = s.slice(i + 1).trim().split(/\s+/).filter(Boolean)
+  for (let k = 0; k < tokens.length; k++) {
+    const prev = k > 0 ? tokens[k - 1] : ''
+    const m = tokens[k].match(/^(\d+(?:[\/-]\d+)?[A-Za-z]?)(?=$|[^A-Za-z0-9])/)
+    if (m && !PALAVRAS_COMPLEMENTO.test(prev)) {
+      const resto = tokens.slice(k + 1).join(' ').replace(/^[\s\-–,.;:_]+/, '').trim()
+      return { logradouro: rua, numero: m[1], complemento: resto || null }
+    }
+  }
+  return null
+}
+
 export async function POST(request: Request) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let body: Record<string, any>
@@ -127,7 +147,12 @@ export async function POST(request: Request) {
     indicador_validado?: boolean
   }
 
-  const { logradouro, numero, complemento } = parseLogradouro(logradouroRaw ?? '')
+  const logradouroTxt = logradouroRaw ?? ''
+  const { logradouro, numero: numeroBruto, complemento } = logradouroTxt.includes(',')
+    ? (parseLogradouroTolerante(logradouroTxt) ?? { logradouro: logradouroTxt, numero: 'S/N', complemento: null })
+    : parseLogradouro(logradouroTxt)
+  // SGP rejeita S/N, SN e similares, mas aceita 0 (convenção de sem número)
+  const numero = /^\d/.test(numeroBruto) ? numeroBruto : '0'
   const vencimento = observacao?.match(/Vencimento:\s*Dia\s*(\S+)/)?.[1] ?? ''
   const cidade_cobertura = observacao?.match(/Cidade(?: cobertura)?:\s*([^|]+)/)?.[1]?.trim() ?? ''
   const bairro_cobertura = observacao?.match(/Bairro(?: cobertura)?:\s*([^|]+)/)?.[1]?.trim() ?? ''
